@@ -10,6 +10,11 @@ commands:
   factions:
     description: Reference command for Factions.
     aliases: [f]
+  k:
+    description: Reference command for Kingdoms.
+    aliases: [ kingdoms ]
+  test:
+    description: Test command
 permissions:
   factions.kit.admin:
     description: All faction permissions.

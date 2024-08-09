@@ -4,6 +4,9 @@ import cc.javajobs.wgbridge.WorldGuardBridge;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+import com.kingdomspvp.kingdoms.commands.KingdomCommandExecutor;
+import com.kingdomspvp.kingdoms.commands.TestCommand;
+import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.massivecraft.factions.addon.AddonManager;
 import com.massivecraft.factions.addon.FactionsAddon;
 import com.massivecraft.factions.cmd.CmdAutoHelp;
@@ -53,6 +56,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.lang.reflect.Modifier;
 import java.util.*;
@@ -61,6 +65,7 @@ import java.util.*;
 public class FactionsPlugin extends MPlugin {
 
     public static FactionsPlugin instance;
+    private KingdomsManager kingdomsManager;
     private final Gson gsonSerializer = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().enableComplexMapKeySerialization().excludeFieldsWithModifiers(Modifier.TRANSIENT, Modifier.VOLATILE)
             .registerTypeAdapter(new TypeToken<Map<Permissable, Map<PermissableAction, Access>>>() {
             }.getType(), new PermissionsMapTypeAdapter())
@@ -228,6 +233,22 @@ public class FactionsPlugin extends MPlugin {
             // Set startup finished to true. to give plugins hooking in a greenlight
             FactionsPlugin.startupFinished = true;
         });
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                try {
+                    kingdomsManager = new KingdomsManager();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                getCommand("test").setExecutor(new TestCommand());
+                getCommand("k").setExecutor(new KingdomCommandExecutor(FactionsPlugin.this));
+            }
+        }.runTaskLater(this, 1L);
+
+        getLogger().info("Kingdoms a été activé.");
     }
 
     private void setupPlaceholderAPI() {
@@ -428,5 +449,9 @@ public class FactionsPlugin extends MPlugin {
 
     public FactionsPlayerListener getFactionsPlayerListener() {
         return this.factionsPlayerListener;
+    }
+
+    public KingdomsManager getKingdomsManager() {
+        return kingdomsManager;
     }
 }
