@@ -38,10 +38,14 @@ public class Kingdom {
 
     private void createDefaultFaction() {
         String factionName = "Paysans_" + name;
-        defaultFaction = Factions.getInstance().createFaction();
-        defaultFaction.setTag(factionName);
-        defaultFaction.setDescription(ChatColor.GRAY + "Faction par défaut pour le royaume " + ChatColor.GREEN + name);
-        factions.add(defaultFaction);
+        if (!Factions.getInstance().isTagTaken(factionName)){
+            defaultFaction = Factions.getInstance().createFaction();
+            defaultFaction.setTag(factionName);
+            defaultFaction.setDescription(ChatColor.GRAY + "Faction par défaut pour le royaume " + ChatColor.GREEN + name);
+            factions.add(defaultFaction);
+        } else {
+            defaultFaction = Factions.getInstance().getByTag(factionName);
+        };
     }
 
     public void addPlayerToDefaultFaction(Player player) {
