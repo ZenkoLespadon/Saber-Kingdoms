@@ -1,11 +1,11 @@
 package com.massivecraft.factions.exceptions;
 
-public class NoFactionException extends RuntimeException {
-    public NoFactionException(String message) {
+public class PlayerIsntInFactionException extends RuntimeException {
+    public PlayerIsntInFactionException(String message) {
         super(message);
     }
 
-    public NoFactionException(String message, Throwable cause) {
+    public PlayerIsntInFactionException(String message, Throwable cause) {
         super(message, cause);
     }
 }

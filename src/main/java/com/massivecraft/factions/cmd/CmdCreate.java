@@ -4,6 +4,7 @@ import com.massivecraft.factions.*;
 import com.massivecraft.factions.cmd.reserve.ReserveObject;
 import com.massivecraft.factions.event.FPlayerJoinEvent;
 import com.massivecraft.factions.event.FactionCreateEvent;
+import com.massivecraft.factions.exceptions.PlayerIsntInFactionException;
 import com.massivecraft.factions.integration.Econ;
 import com.massivecraft.factions.struct.Permission;
 import com.massivecraft.factions.struct.Role;
@@ -36,6 +37,10 @@ public class CmdCreate extends FCommand {
     @Override
     public void perform(CommandContext context) {
         String tag = context.argAsString(0);
+
+        if (!context.fPlayer.hasFaction()) {
+            throw new PlayerIsntInFactionException("Le joueur" + context.fPlayer.getName() + " n'est pas dans une faction.");
+        }
 
         if (context.fPlayer.hasFaction()) {
             context.msg(TL.COMMAND_CREATE_MUSTLEAVE);
