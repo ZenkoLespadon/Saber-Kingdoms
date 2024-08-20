@@ -3,12 +3,13 @@ package com.kingdomspvp.kingdoms.services;
 import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.massivecraft.factions.Faction;
 import org.bukkit.ChatColor;
+import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class KingdomsManager {
-    private List<Kingdom> kingdoms;
+    private static List<Kingdom> kingdoms;
 
     public KingdomsManager() {
         kingdoms = new ArrayList<>();
@@ -35,10 +36,10 @@ public class KingdomsManager {
         return null;
     }
 
-    public Kingdom getKingdomByFactionName(String factionName) {
+    public static Kingdom getKingdomByFactionName(String factionName) {
         for (Kingdom kingdom : kingdoms) {
             for (Faction faction : kingdom.getFactions()) {
-                if (faction.getTag().equalsIgnoreCase(factionName)) {
+                if (faction.getTag().equals(factionName)) {
                     return kingdom;
                 }
             }

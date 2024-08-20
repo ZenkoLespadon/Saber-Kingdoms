@@ -1,5 +1,6 @@
 package com.massivecraft.factions.cmd;
 
+import com.kingdomspvp.kingdoms.services.FPlayerManager;
 import com.massivecraft.factions.*;
 import com.massivecraft.factions.cmd.reserve.ReserveObject;
 import com.massivecraft.factions.event.FPlayerJoinEvent;
@@ -13,8 +14,11 @@ import com.massivecraft.factions.util.Logger;
 import com.massivecraft.factions.util.MiscUtil;
 import com.massivecraft.factions.zcore.util.TL;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
+
+import static com.kingdomspvp.kingdoms.services.FPlayerManager.getFPlayerFaction;
 
 
 public class CmdCreate extends FCommand {
@@ -40,11 +44,11 @@ public class CmdCreate extends FCommand {
 
         if (!context.fPlayer.hasFaction()) {
             throw new PlayerIsntInFactionException("Le joueur" + context.fPlayer.getName() + " n'est pas dans une faction.");
-        }
-
-        if (context.fPlayer.hasFaction()) {
-            context.msg(TL.COMMAND_CREATE_MUSTLEAVE);
-            return;
+        } else {
+            if (!context.fPlayer.getFaction().getTag().contains("Paysans_")) {
+                context.msg(TL.COMMAND_CREATE_MUSTLEAVE);
+                return;
+            }
         }
 
         if (Factions.getInstance().isTagTaken(tag)) {
@@ -99,6 +103,10 @@ public class CmdCreate extends FCommand {
             context.msg(TL.COMMAND_CREATE_ERROR);
             return;
         }
+
+        context.sender.sendMessage(getFPlayerFaction((Player) context.sender).getTag());
+        FPlayerManager.getFPlayerKingdom(context.player).addFaction(faction);
+
 
         // finish setting up the Faction
         faction.setTag(tag);

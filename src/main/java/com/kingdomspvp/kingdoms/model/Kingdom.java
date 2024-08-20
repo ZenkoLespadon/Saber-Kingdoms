@@ -45,6 +45,7 @@ public class Kingdom {
             factions.add(defaultFaction);
         } else {
             defaultFaction = Factions.getInstance().getByTag(factionName);
+            factions.add(defaultFaction);
         };
     }
 
@@ -54,4 +55,9 @@ public class Kingdom {
         // Send a message to the player indicating they have been added to the faction
         player.sendMessage(ChatColor.GRAY + "Vous avez été ajouté à la faction par défaut du royaume " + this.color + name);
     }
+
+    public void addFaction(Faction faction) {
+        factions.add(faction);
+    };
+
 }

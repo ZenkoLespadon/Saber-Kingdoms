@@ -1,5 +1,6 @@
 package com.kingdomspvp.kingdoms.services;
 
+import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.Faction;
@@ -20,6 +21,11 @@ public class FPlayerManager {
     public static Faction getFPlayerFaction(Player player) {
         FPlayer fPlayer = getFPlayer(player);
         return fPlayer.getFaction();
+    }
+
+    public static Kingdom getFPlayerKingdom(Player player) {
+        Faction faction = getFPlayerFaction(player);
+        return KingdomsManager.getKingdomByFactionName(faction.getTag());
     }
 
     public static void handleRole(Player player) {

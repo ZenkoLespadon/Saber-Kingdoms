@@ -34,7 +34,6 @@ public class KingdomCommandExecutor implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        sender.sendMessage("Test KingdomCommandExecutor");
         KingdomCommandContext context = new KingdomCommandContext(sender, Arrays.asList(args), plugin);
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
             showHelp(context);
