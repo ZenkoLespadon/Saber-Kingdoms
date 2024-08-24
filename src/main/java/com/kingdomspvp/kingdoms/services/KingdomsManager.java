@@ -9,25 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class KingdomsManager {
-    private static List<Kingdom> kingdoms;
+    private static List<Kingdom> kingdoms = new ArrayList<>();
 
-    public KingdomsManager() {
-        kingdoms = new ArrayList<>();
-        createDefaultKingdoms();
-    }
-
-    private void createDefaultKingdoms() {
-        kingdoms.add(new Kingdom("Bleu", ChatColor.BLUE));
-        kingdoms.add(new Kingdom("Rouge", ChatColor.RED));
-        kingdoms.add(new Kingdom("Jaune", ChatColor.YELLOW));
-        kingdoms.add(new Kingdom("Vert", ChatColor.GREEN));
-    }
-
-    public List<Kingdom> getKingdoms() {
+    public static List<Kingdom> getKingdoms() {
         return kingdoms;
     }
 
-    public Kingdom getKingdomByName(String name) {
+    public static Kingdom getKingdomByName(String name) {
         for (Kingdom kingdom : kingdoms) {
             if (kingdom.getName().equalsIgnoreCase(name)) {
                 return kingdom;
@@ -45,5 +33,9 @@ public class KingdomsManager {
             }
         }
         return null;
+    }
+
+    public static void addKingdom(Kingdom kingdom) {
+        kingdoms.add(kingdom);
     }
 }
