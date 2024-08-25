@@ -37,7 +37,7 @@ public class CreateCommand extends KingdomCommand {
 
         // Créer un nouveau royaume
         Kingdom kingdom = new Kingdom(kingdomName, ChatColor.GREEN); // Vous pouvez choisir une autre couleur ou la passer en argument
-        KingdomsManager.getKingdoms().add(kingdom);
+        KingdomsManager.addKingdom(kingdom);
 
         // Ajouter le joueur à la faction par défaut du royaume
         kingdom.addPlayerToDefaultFaction(context.player);

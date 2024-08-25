@@ -1,32 +1,32 @@
 package com.kingdomspvp.kingdoms.services;
 
+import com.kingdomspvp.kingdoms.utils.Callback;
+import com.kingdomspvp.kingdoms.utils.KingdomsJSON;
 import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.massivecraft.factions.Faction;
-import org.bukkit.ChatColor;
-import org.bukkit.entity.Player;
+import org.bukkit.util.Consumer;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class KingdomsManager {
-    private static List<Kingdom> kingdoms = new ArrayList<>();
+    private static final KingdomsJSON kingdomsJSON = new KingdomsJSON();
+
+    // Chargement des royaumes lors de l'initialisation du manager
+    public static void loadKingdoms(Callback<Boolean> success) {
+        kingdomsJSON.load(success);
+    }
 
     public static List<Kingdom> getKingdoms() {
-        return kingdoms;
+        return List.copyOf(kingdomsJSON.getAllKingdoms().values());
     }
 
     public static Kingdom getKingdomByName(String name) {
-        for (Kingdom kingdom : kingdoms) {
-            if (kingdom.getName().equalsIgnoreCase(name)) {
-                return kingdom;
-            }
-        }
-        return null;
+        return kingdomsJSON.getKingdom(name);
     }
 
     public static Kingdom getKingdomByFactionName(String factionName) {
-        for (Kingdom kingdom : kingdoms) {
-            for (Faction faction : kingdom.getFactions()) {
+        for (Kingdom kingdom : kingdomsJSON.getAllKingdoms().values()) {
+            for (Faction faction : kingdom.getFactions()) { // Utilisation de la méthode getFactions()
                 if (faction.getTag().equals(factionName)) {
                     return kingdom;
                 }
@@ -36,6 +36,17 @@ public class KingdomsManager {
     }
 
     public static void addKingdom(Kingdom kingdom) {
-        kingdoms.add(kingdom);
+        kingdomsJSON.addKingdom(kingdom);
+        saveKingdoms();
+    }
+
+    public static void removeKingdom(String name) {
+        kingdomsJSON.removeKingdom(name);
+        saveKingdoms();
+    }
+
+    // Sauvegarde manuelle des royaumes
+    public static void saveKingdoms() {
+        kingdomsJSON.forceSave();
     }
 }

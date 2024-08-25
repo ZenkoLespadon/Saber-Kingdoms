@@ -239,6 +239,13 @@ public class FactionsPlugin extends MPlugin {
             public void run() {
                 try {
                     kingdomsManager = new KingdomsManager();
+                    KingdomsManager.loadKingdoms(success -> {
+                        if (success) {
+                            getLogger().info("Kingdoms a été activé.");
+                        } else {
+                            getLogger().warning("Chargement des royaumes échoué.");
+                        }
+                    });
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -247,8 +254,6 @@ public class FactionsPlugin extends MPlugin {
                 getCommand("k").setExecutor(new KingdomCommandExecutor(FactionsPlugin.this));
             }
         }.runTaskLater(this, 1L);
-
-        getLogger().info("Kingdoms a été activé.");
     }
 
     private void setupPlaceholderAPI() {
@@ -316,6 +321,7 @@ public class FactionsPlugin extends MPlugin {
             TextUtil.AUDIENCES.close();
         }
 
+        KingdomsManager.saveKingdoms();
         super.onDisable();
     }
 

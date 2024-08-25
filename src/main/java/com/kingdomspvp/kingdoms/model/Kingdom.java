@@ -9,18 +9,18 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Kingdom {
     private String name;
-
     private ChatColor color;
-    private List<Faction> factions;
-    private Faction defaultFaction;
+    private List<String> factionIds;  // IDs des factions
+    private String defaultFactionId;  // ID de la faction par défaut
 
     public Kingdom(String name, ChatColor color) {
         this.name = name;
         this.color = color;
-        this.factions = new ArrayList<>();
+        this.factionIds = new ArrayList<>();
         createDefaultFaction();
     }
 
@@ -33,31 +33,34 @@ public class Kingdom {
     }
 
     public List<Faction> getFactions() {
-        return factions;
+        return factionIds.stream()
+                .map(id -> Factions.getInstance().getFactionById(id))
+                .collect(Collectors.toList());
     }
 
     private void createDefaultFaction() {
         String factionName = "Paysans_" + name;
+        Faction faction;
         if (!Factions.getInstance().isTagTaken(factionName)){
-            defaultFaction = Factions.getInstance().createFaction();
-            defaultFaction.setTag(factionName);
-            defaultFaction.setDescription(ChatColor.GRAY + "Faction par défaut pour le royaume " + ChatColor.GREEN + name);
-            factions.add(defaultFaction);
+            faction = Factions.getInstance().createFaction();
+            faction.setTag(factionName);
+            faction.setDescription(ChatColor.GRAY + "Faction par défaut pour le royaume " + ChatColor.GREEN + name);
         } else {
-            defaultFaction = Factions.getInstance().getByTag(factionName);
-            factions.add(defaultFaction);
-        };
+            faction = Factions.getInstance().getByTag(factionName);
+        }
+        defaultFactionId = faction.getId();
+        factionIds.add(defaultFactionId);
     }
 
     public void addPlayerToDefaultFaction(Player player) {
+        Faction defaultFaction = Factions.getInstance().getFactionById(defaultFactionId);
         FPlayer fPlayer = FPlayers.getInstance().getByPlayer(player);
         fPlayer.setFaction(defaultFaction, true);
-        // Send a message to the player indicating they have been added to the faction
+        // Envoie un message au joueur pour l'informer qu'il a été ajouté à la faction
         player.sendMessage(ChatColor.GRAY + "Vous avez été ajouté à la faction par défaut du royaume " + this.color + name);
     }
 
     public void addFaction(Faction faction) {
-        factions.add(faction);
-    };
-
+        factionIds.add(faction.getId());
+    }
 }
