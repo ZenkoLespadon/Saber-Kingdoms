@@ -63,4 +63,12 @@ public class Kingdom {
     public void addFaction(Faction faction) {
         factionIds.add(faction.getId());
     }
+
+    public void removeFaction(Faction faction) {
+        factionIds.remove(faction.getId());
+    }
+
+    public String getDefaultFactionId() {
+        return defaultFactionId;
+    }
 }

@@ -4,6 +4,8 @@ import com.kingdomspvp.kingdoms.utils.Callback;
 import com.kingdomspvp.kingdoms.utils.KingdomsJSON;
 import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.massivecraft.factions.Faction;
+import com.massivecraft.factions.Factions;
+import org.bukkit.entity.Player;
 import org.bukkit.util.Consumer;
 
 import java.util.List;
@@ -33,6 +35,12 @@ public class KingdomsManager {
             }
         }
         return null;
+    }
+
+    public static boolean playerInDefaultKingdom(Player player, Kingdom kingdom) {
+        Faction playerFaction = FPlayerManager.getFPlayerFaction(player);
+        Faction defaultFactionKingdom = Factions.getInstance().getFactionById(kingdom.getDefaultFactionId());
+        return playerFaction.getId().equals(defaultFactionKingdom.getId());
     }
 
     public static void addKingdom(Kingdom kingdom) {

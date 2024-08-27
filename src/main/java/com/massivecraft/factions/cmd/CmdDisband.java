@@ -1,5 +1,7 @@
 package com.massivecraft.factions.cmd;
 
+import com.kingdomspvp.kingdoms.services.FPlayerManager;
+import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.massivecraft.factions.*;
 import com.massivecraft.factions.event.FactionDisbandEvent.PlayerDisbandReason;
 import com.massivecraft.factions.struct.Permission;
@@ -37,6 +39,12 @@ public class CmdDisband extends FCommand {
 
     @Override
     public void perform(CommandContext context) {
+
+        if (KingdomsManager.playerInDefaultKingdom(context.player, KingdomsManager.getKingdomByFactionName(FPlayerManager.getFPlayerFaction(context.player).getTag()))) {
+            context.msg("Vous ne pouvez pas dissoudre la faction par défaut du royaume");
+            return;
+        }
+
         Faction faction = context.argAsFaction(0, context.fPlayer == null ? null : context.faction);
         if (faction == null) return;
 
@@ -83,6 +91,7 @@ public class CmdDisband extends FCommand {
         }
 
         broadcastDisband(context, faction);
+        FPlayerManager.getFPlayerKingdom(context.player).addPlayerToDefaultFaction(context.player);
         faction.disband(context.player, PlayerDisbandReason.COMMAND);
         Cooldown.setCooldown(context.fPlayer.getPlayer(), "disbandCooldown", FactionsPlugin.getInstance().getConfig().getInt("fcooldowns.f-disband"));
     }
