@@ -1,6 +1,7 @@
 package com.massivecraft.factions.cmd;
 
 import com.kingdomspvp.kingdoms.services.FPlayerManager;
+import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.massivecraft.factions.*;
 import com.massivecraft.factions.cmd.reserve.ReserveObject;
 import com.massivecraft.factions.event.FPlayerJoinEvent;
@@ -43,7 +44,7 @@ public class CmdCreate extends FCommand {
         String tag = context.argAsString(0);
 
         if (!context.fPlayer.hasFaction()) {
-            throw new PlayerIsntInFactionException("Le joueur" + context.fPlayer.getName() + " n'est pas dans une faction.");
+            throw new PlayerIsntInFactionException("Le joueur" + context.fPlayer.getName() + " n'est dans aucune faction.");
         } else {
             if (!context.fPlayer.getFaction().getTag().contains("Paysans_")) {
                 context.msg(TL.COMMAND_CREATE_MUSTLEAVE);
@@ -105,7 +106,8 @@ public class CmdCreate extends FCommand {
         }
 
         context.sender.sendMessage(getFPlayerFaction((Player) context.sender).getTag());
-        FPlayerManager.getFPlayerKingdom(context.player).addFaction(faction);
+        FPlayerManager.getPlayerKingdom(context.player).addFaction(faction);
+        KingdomsManager.saveKingdoms();
 
 
         // finish setting up the Faction

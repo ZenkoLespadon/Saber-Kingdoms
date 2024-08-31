@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 
 public class FPlayerManager {
 
+    //TODO : Bouger les méthodes qui n'ont rien à faire là dans KingdomsManager
     public static FPlayer getFPlayer(Player player) {
         return FPlayers.getInstance().getByPlayer(player);
     }
@@ -23,7 +24,7 @@ public class FPlayerManager {
         return fPlayer.getFaction();
     }
 
-    public static Kingdom getFPlayerKingdom(Player player) {
+    public static Kingdom getPlayerKingdom(Player player) {
         Faction faction = getFPlayerFaction(player);
         return KingdomsManager.getKingdomByFactionName(faction.getTag());
     }

@@ -1,5 +1,7 @@
 package com.massivecraft.factions.cmd;
 
+import com.kingdomspvp.kingdoms.model.Kingdom;
+import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.massivecraft.factions.Conf;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.Faction;
@@ -128,9 +130,14 @@ public class CmdKick extends FCommand {
         if (toKick.getRole() == Role.LEADER) {
             toKickFaction.promoteNewLeader();
         }
+
         FactionsPlugin.instance.logFactionEvent(toKickFaction, FLogType.INVITES, context.fPlayer.getName(), CC.Red + "kicked", toKick.getName());
         toKickFaction.deinvite(toKick);
         toKick.resetFactionData();
+
+        Kingdom kingdom = KingdomsManager.getKingdomByFactionName(toKickFaction.getTag());
+        assert kingdom != null;
+        KingdomsManager.addPlayerToDefaultFactionOfKingdom(toKick.getPlayer(), kingdom);
     }
 
     @Override

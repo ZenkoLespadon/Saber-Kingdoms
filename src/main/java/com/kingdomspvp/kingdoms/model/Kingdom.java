@@ -52,14 +52,6 @@ public class Kingdom {
         factionIds.add(defaultFactionId);
     }
 
-    public void addPlayerToDefaultFaction(Player player) {
-        Faction defaultFaction = Factions.getInstance().getFactionById(defaultFactionId);
-        FPlayer fPlayer = FPlayers.getInstance().getByPlayer(player);
-        fPlayer.setFaction(defaultFaction, true);
-        // Envoie un message au joueur pour l'informer qu'il a été ajouté à la faction
-        player.sendMessage(ChatColor.GRAY + "Vous avez été ajouté à la faction par défaut du royaume " + this.color + name);
-    }
-
     public void addFaction(Faction faction) {
         factionIds.add(faction.getId());
     }

@@ -1,6 +1,8 @@
 package com.kingdomspvp.kingdoms.commands;
 
 import com.kingdomspvp.kingdoms.model.Kingdom;
+import com.kingdomspvp.kingdoms.services.KPlayerManager;
+import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.massivecraft.factions.FactionsPlugin;
 import org.bukkit.ChatColor;
 
@@ -31,7 +33,8 @@ public class JoinCommand extends KingdomCommand {
 
         if (kingdom != null) {
             context.player.sendMessage(ChatColor.GRAY + "Vous avez rejoint le royaume : " + kingdom.getColor() + kingdom.getName());
-            kingdom.addPlayerToDefaultFaction(context.player);
+            KingdomsManager.addPlayerToDefaultFactionOfKingdom(context.player, kingdom);
+            KPlayerManager.createKPlayer(context.player);
         } else {
             context.player.sendMessage(ChatColor.GRAY + "Le royaume spécifié n'existe pas.");
         }

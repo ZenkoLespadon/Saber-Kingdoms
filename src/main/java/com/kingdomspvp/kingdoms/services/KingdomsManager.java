@@ -3,10 +3,12 @@ package com.kingdomspvp.kingdoms.services;
 import com.kingdomspvp.kingdoms.utils.Callback;
 import com.kingdomspvp.kingdoms.utils.KingdomsJSON;
 import com.kingdomspvp.kingdoms.model.Kingdom;
+import com.massivecraft.factions.FPlayer;
+import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.Faction;
 import com.massivecraft.factions.Factions;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
-import org.bukkit.util.Consumer;
 
 import java.util.List;
 
@@ -37,7 +39,14 @@ public class KingdomsManager {
         return null;
     }
 
-    public static boolean playerInDefaultKingdom(Player player, Kingdom kingdom) {
+    public static void addPlayerToDefaultFactionOfKingdom(Player player, Kingdom kingdom) {
+        Faction defaultFaction = Factions.getInstance().getFactionById(kingdom.getDefaultFactionId());
+        FPlayer fPlayer = FPlayers.getInstance().getByPlayer(player);
+        fPlayer.setFaction(defaultFaction, true);
+        player.sendMessage(ChatColor.GRAY + "Vous avez été ajouté à la faction par défaut du royaume " + kingdom.getColor() + kingdom.getName());
+    }
+
+    public static boolean playerInDefaultFaction(Player player, Kingdom kingdom) {
         Faction playerFaction = FPlayerManager.getFPlayerFaction(player);
         Faction defaultFactionKingdom = Factions.getInstance().getFactionById(kingdom.getDefaultFactionId());
         return playerFaction.getId().equals(defaultFactionKingdom.getId());
@@ -50,6 +59,11 @@ public class KingdomsManager {
 
     public static void removeKingdom(String name) {
         kingdomsJSON.removeKingdom(name);
+        saveKingdoms();
+    }
+
+    public static void removeFactionInKingdom(Kingdom kingdom, Faction faction) {
+        kingdom.removeFaction(faction);
         saveKingdoms();
     }
 

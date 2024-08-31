@@ -39,8 +39,12 @@ public class CreateCommand extends KingdomCommand {
         Kingdom kingdom = new Kingdom(kingdomName, ChatColor.GREEN); // Vous pouvez choisir une autre couleur ou la passer en argument
         KingdomsManager.addKingdom(kingdom);
 
-        // Ajouter le joueur à la faction par défaut du royaume
-        kingdom.addPlayerToDefaultFaction(context.player);
+        if (kingdom != null) {
+            context.player.sendMessage(ChatColor.GRAY + "Vous avez rejoint le royaume : " + kingdom.getColor() + kingdom.getName());
+            KingdomsManager.addPlayerToDefaultFactionOfKingdom(context.player, kingdom);
+        } else {
+            context.player.sendMessage(ChatColor.GRAY + "Le royaume spécifié n'existe pas.");
+        }
 
         // Envoyer un message de confirmation
         context.msg(ChatColor.GREEN + "Kingdom " + kingdomName + " has been successfully created.");
