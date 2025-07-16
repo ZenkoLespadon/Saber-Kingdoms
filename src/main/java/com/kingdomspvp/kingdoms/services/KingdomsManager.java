@@ -15,6 +15,7 @@ import java.util.List;
 public class KingdomsManager {
     private static final KingdomsJSON kingdomsJSON = new KingdomsJSON();
 
+
     // Chargement des royaumes lors de l'initialisation du manager
     public static void loadKingdoms(Callback<Boolean> success) {
         kingdomsJSON.load(success);

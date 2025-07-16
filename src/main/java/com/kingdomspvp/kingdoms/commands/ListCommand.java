@@ -7,7 +7,6 @@ import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.massivecraft.factions.FPlayers;
 import org.bukkit.ChatColor;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;

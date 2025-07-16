@@ -6,6 +6,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.kingdomspvp.kingdoms.commands.KingdomCommandExecutor;
 import com.kingdomspvp.kingdoms.commands.TestCommand;
+import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.massivecraft.factions.addon.AddonManager;
 import com.massivecraft.factions.addon.FactionsAddon;
@@ -234,26 +235,39 @@ public class FactionsPlugin extends MPlugin {
             FactionsPlugin.startupFinished = true;
         });
 
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                try {
-                    kingdomsManager = new KingdomsManager();
-                    KingdomsManager.loadKingdoms(success -> {
-                        if (success) {
-                            getLogger().info("Kingdoms a été activé.");
-                        } else {
-                            getLogger().warning("Chargement des royaumes échoué.");
-                        }
-                    });
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+        Bukkit.getScheduler().runTask(this, () -> {
+            try {
+                kingdomsManager = new KingdomsManager();
 
-                getCommand("test").setExecutor(new TestCommand());
-                getCommand("k").setExecutor(new KingdomCommandExecutor(FactionsPlugin.this));
+                KingdomsManager.loadKingdoms(success -> {
+                    if (success) {
+                        getLogger().info("Kingdoms loaded");
+                    }
+                });
+
+                ClaimManager.loadClaims(success -> {
+                    if (success) {
+                        if (ClaimManager.getNumClaims() == 0) {
+                            ClaimManager.generateClaims();
+                            ClaimManager.saveClaims();
+                            getLogger().info("Claims generated and saved because empty");
+                        } else {
+                            getLogger().info("Claims loaded from disk");
+                        }
+                    }
+                });
+
+
+                getLogger().info("nombre de claims : " + ClaimManager.getNumClaims());
+
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        }.runTaskLater(this, 1L);
+
+            getCommand("test").setExecutor(new TestCommand());
+            getCommand("k").setExecutor(new KingdomCommandExecutor(FactionsPlugin.this));
+        });
+
     }
 
     private void setupPlaceholderAPI() {
