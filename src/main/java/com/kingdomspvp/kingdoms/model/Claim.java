@@ -31,4 +31,8 @@ public class Claim {
     public String toString() {
         return "Claim[" + gridX + "," + gridZ + ", kingdom=" + (kingdomName != null ? kingdomName : "None") + "]";
     }
+
+    public void setFactionName(String tag) {
+        this.factionName = tag;
+    }
 }

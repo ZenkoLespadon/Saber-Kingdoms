@@ -43,8 +43,8 @@ public class ClaimManager {
 
         for (int x = startX; x < startX + MAP_SIZE; x += CLAIM_SIZE) {
             for (int z = startZ; z < startZ + MAP_SIZE; z += CLAIM_SIZE) {
-                int gridX = x / CLAIM_SIZE;
-                int gridZ = z / CLAIM_SIZE;
+                int gridX = (int) Math.floor((double) x / CLAIM_SIZE);
+                int gridZ = (int) Math.floor((double) z / CLAIM_SIZE);
                 Claim claim = new Claim(gridX, gridZ);
                 claimsJSON.addClaim(claim);
             }
@@ -96,8 +96,8 @@ public class ClaimManager {
     }
 
     public static Claim getClaimByCoordinates(int x, int z) {
-        int gridX = x / CLAIM_SIZE;
-        int gridZ = z / CLAIM_SIZE;
+        int gridX = (int) Math.floor((double) x / CLAIM_SIZE);
+        int gridZ = (int) Math.floor((double) z / CLAIM_SIZE);
         return getClaim(gridX, gridZ);
     }
 
@@ -113,8 +113,8 @@ public class ClaimManager {
 
         for (int x = startX; x < startX + MAP_SIZE; x += CLAIM_SIZE) {
             for (int z = startZ; z < startZ + MAP_SIZE; z += CLAIM_SIZE) {
-                int gridX = x / CLAIM_SIZE;
-                int gridZ = z / CLAIM_SIZE;
+                int gridX = (int) Math.floor((double) x / CLAIM_SIZE);
+                int gridZ = (int) Math.floor((double) z / CLAIM_SIZE);
                 Claim claim = new Claim(gridX, gridZ);
                 claimsJSON.addClaim(claim);
             }
