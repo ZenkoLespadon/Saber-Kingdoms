@@ -6,6 +6,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.kingdomspvp.kingdoms.commands.KingdomCommandExecutor;
 import com.kingdomspvp.kingdoms.commands.TestCommand;
+import com.kingdomspvp.kingdoms.listeners.KingdomProtectionListener;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.massivecraft.factions.addon.AddonManager;
@@ -263,6 +264,9 @@ public class FactionsPlugin extends MPlugin {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            Bukkit.getPluginManager().registerEvents(new KingdomProtectionListener(this), this);
+
 
             getCommand("test").setExecutor(new TestCommand());
             getCommand("k").setExecutor(new KingdomCommandExecutor(FactionsPlugin.this));

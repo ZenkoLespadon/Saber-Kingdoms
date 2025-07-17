@@ -120,4 +120,22 @@ public class ClaimManager {
             }
         }
     }
+
+    public static boolean isAdjacentToKingdomClaim(Claim claim, String kingdomName) {
+        int x = claim.getGridX();
+        int z = claim.getGridZ();
+
+        int[][] directions = {
+                {1, 0}, {-1, 0}, {0, 1}, {0, -1}
+        };
+
+        for (int[] dir : directions) {
+            Claim neighbor = ClaimManager.getClaim(x + dir[0], z + dir[1]);
+            if (neighbor != null && kingdomName.equalsIgnoreCase(neighbor.getKingdomName())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

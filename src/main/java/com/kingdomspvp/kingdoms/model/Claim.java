@@ -35,4 +35,8 @@ public class Claim {
     public void setFactionName(String tag) {
         this.factionName = tag;
     }
+
+    public String getFactionName() {
+        return factionName;
+    }
 }
