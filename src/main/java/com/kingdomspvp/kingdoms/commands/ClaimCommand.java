@@ -6,17 +6,20 @@ import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
-import com.massivecraft.factions.FactionsPlugin;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 
 import java.util.Arrays;
 
+import static com.kingdomspvp.kingdoms.services.ClaimManager.isCornerClaim;
+
 public class ClaimCommand extends KingdomCommand {
 
-    // TODO : Ajouter le fait que le claim doit être à côté d'un autre claim du royaume
+    // TODO : Donner les coordonnées du nouveau claim au joueur ou au royaume
+    // TODO : Limiter le nombre de claims par royaume au début à un certain nombre à set
     // TODO : Ajouter une exception si la faction n'est pas dans le royaume
     // TODO : Ajouter une exception si le claim n'est pas trouvé
+    // TODO : Ajouter des logs pour tout le plugin dans un fichier de log
 
     public ClaimCommand() {
         this.aliases = Arrays.asList("claim");
@@ -30,7 +33,6 @@ public class ClaimCommand extends KingdomCommand {
             return;
         }
 
-        // Vérification faction du joueur
         FPlayer fPlayer = FPlayers.getInstance().getByPlayer(context.player);
         if (fPlayer == null || fPlayer.getFaction() == null || fPlayer.getFaction().isWilderness()) {
             context.msg(ChatColor.RED + "Vous devez être dans une faction pour claim.");
@@ -44,7 +46,6 @@ public class ClaimCommand extends KingdomCommand {
             return;
         }
 
-        // Trouver le claim actuel
         Location loc = context.player.getLocation();
         Claim claim = ClaimManager.getClaimByCoordinates(loc.getBlockX(), loc.getBlockZ());
         if (claim == null) {
@@ -52,13 +53,26 @@ public class ClaimCommand extends KingdomCommand {
             return;
         }
 
-        // Vérifier propriété actuelle
         if (claim.getKingdomName() != null && !claim.getKingdomName().equalsIgnoreCase("None")) {
             context.msg(ChatColor.RED + "Ce chunk est déjà claim par un royaume.");
             return;
         }
 
-        // Effectuer le claim
+        boolean hasAnyClaim = ClaimManager.hasClaimForKingdom(kingdom.getName());
+        if (!hasAnyClaim) {
+            // Premier claim : doit être dans un coin
+            if (!isCornerClaim(claim)) {
+                context.msg(ChatColor.RED + "Le premier claim d’un royaume doit être situé dans un coin de la carte.");
+                return;
+            }
+        } else {
+            // Cas général : doit être adjacent à un claim existant
+            if (!ClaimManager.isAdjacentToKingdomClaim(claim, kingdom.getName())) {
+                context.msg(ChatColor.RED + "Vous ne pouvez claim que des chunks adjacents à ceux de votre royaume.");
+                return;
+            }
+        }
+
         claim.setKingdomName(kingdom.getName());
         claim.setFactionName(factionName);
         ClaimManager.addClaim(claim);
@@ -68,6 +82,7 @@ public class ClaimCommand extends KingdomCommand {
                 + ChatColor.GREEN + " et la faction "
                 + ChatColor.WHITE + factionName + ChatColor.GREEN + ".");
     }
+
 
     @Override
     public String getUsageTranslation() {

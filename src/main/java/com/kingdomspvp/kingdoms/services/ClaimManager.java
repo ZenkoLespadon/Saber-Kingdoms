@@ -138,4 +138,29 @@ public class ClaimManager {
 
         return false;
     }
+
+    public static boolean hasClaimForKingdom(String kingdomName) {
+        for (Claim c : getClaims()) {
+            if (kingdomName.equalsIgnoreCase(c.getKingdomName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean isCornerClaim(Claim claim) {
+        int gridX = claim.getGridX();
+        int gridZ = claim.getGridZ();
+
+        int half = ClaimManager.HALF_MAP / ClaimManager.CLAIM_SIZE;
+        int min = -half;
+        int max = half - 1;
+
+        return (gridX == min && gridZ == min) ||
+               (gridX == min && gridZ == max) ||
+               (gridX == max && gridZ == min) ||
+               (gridX == max && gridZ == max);
+    }
+
+
 }
