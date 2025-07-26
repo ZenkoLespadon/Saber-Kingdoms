@@ -63,4 +63,8 @@ public class Kingdom {
     public String getDefaultFactionId() {
         return defaultFactionId;
     }
+
+    public void setDefaultFactionId(String defaultFactionId) {
+        this.defaultFactionId = defaultFactionId;
+    }
 }
