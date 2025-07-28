@@ -78,17 +78,14 @@ public class KingdomsManager {
 
     public static void addKingdom(Kingdom kingdom) {
         kingdomsJSON.addKingdom(kingdom);
-        saveKingdoms();
     }
 
     public static void removeKingdom(String name) {
         kingdomsJSON.removeKingdom(name);
-        saveKingdoms();
     }
 
     public static void removeFactionInKingdom(Kingdom kingdom, Faction faction) {
         kingdom.removeFaction(faction);
-        saveKingdoms();
     }
 
     // Sauvegarde manuelle des royaumes

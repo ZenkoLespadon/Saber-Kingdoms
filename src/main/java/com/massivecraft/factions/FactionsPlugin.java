@@ -9,6 +9,8 @@ import com.kingdomspvp.kingdoms.commands.TestCommand;
 import com.kingdomspvp.kingdoms.listeners.KingdomProtectionListener;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
+import com.kingdomspvp.kingdoms.services.WarManager;
+import com.kingdomspvp.kingdoms.utils.LocalDateTimeAdapter;
 import com.massivecraft.factions.addon.AddonManager;
 import com.massivecraft.factions.addon.FactionsAddon;
 import com.massivecraft.factions.cmd.CmdAutoHelp;
@@ -61,6 +63,7 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.lang.reflect.Modifier;
+import java.time.LocalDateTime;
 import java.util.*;
 
 
@@ -78,6 +81,7 @@ public class FactionsPlugin extends MPlugin {
             .registerTypeAdapter(ReserveObject.class, new ReserveAdapter())
             .registerTypeAdapter(Location.class, new LocationTypeAdapter())
             .registerTypeAdapterFactory(EnumTypeAdapter.ENUM_FACTORY)
+            .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
             .create();
 
     //TODO REDO
@@ -238,16 +242,14 @@ public class FactionsPlugin extends MPlugin {
 
         Bukkit.getScheduler().runTask(this, () -> {
             try {
-                kingdomsManager = new KingdomsManager();
-
                 KingdomsManager.loadKingdoms(success -> {
-                    if (success) {
+                    if (Boolean.TRUE.equals(success)) {
                         getLogger().info("Kingdoms loaded");
                     }
                 });
 
                 ClaimManager.loadClaims(success -> {
-                    if (success) {
+                    if (Boolean.TRUE.equals(success)) {
                         if (ClaimManager.getNumClaims() == 0) {
                             ClaimManager.generateClaims();
                             ClaimManager.saveClaims();
@@ -255,6 +257,12 @@ public class FactionsPlugin extends MPlugin {
                         } else {
                             getLogger().info("Claims loaded from disk");
                         }
+                    }
+                });
+
+                WarManager.loadWars(success -> {
+                    if (success) {
+                        getLogger().info("Wars loaded");
                     }
                 });
 
@@ -271,7 +279,6 @@ public class FactionsPlugin extends MPlugin {
             getCommand("test").setExecutor(new TestCommand());
             getCommand("k").setExecutor(new KingdomCommandExecutor(FactionsPlugin.this));
         });
-
     }
 
     private void setupPlaceholderAPI() {

@@ -10,8 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Consumer;
-
 public class KingdomsJSON {
     // Path vers le fichier JSON
     private final Path path;
