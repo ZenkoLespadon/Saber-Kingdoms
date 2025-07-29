@@ -35,6 +35,7 @@ public class KingdomCommandExecutor implements CommandExecutor {
         this.rootCommand.addSubCommand(new MembersCommand());
         this.rootCommand.addSubCommand(new ClaimCommand());
         this.rootCommand.addSubCommand(new DeclareWarCommand());
+        this.rootCommand.addSubCommand(new WarsListCommand());
         // Ajoutez ici les autres commandes
     }
 
