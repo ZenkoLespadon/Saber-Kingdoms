@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class Kingdom {
@@ -66,5 +67,18 @@ public class Kingdom {
 
     public void setDefaultFactionId(String defaultFactionId) {
         this.defaultFactionId = defaultFactionId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Kingdom)) return false;
+        Kingdom other = (Kingdom) o;
+        return Objects.equals(this.name, other.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name);
     }
 }
