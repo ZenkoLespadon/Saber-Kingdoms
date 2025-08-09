@@ -30,6 +30,8 @@ public class DeclareWarCommand extends KingdomCommand {
             return;
         }
 
+        WarManager.cleanupExpiredRegistrations();
+
         // 2) Vérifier qu'il est dans une faction valable.
         FPlayer fp = FPlayers.getInstance().getByPlayer(context.player);
         if (fp == null || fp.getFaction() == null || fp.getFaction().isWilderness()) {
@@ -102,11 +104,6 @@ public class DeclareWarCommand extends KingdomCommand {
             return;
         }
 
-        // 6) Générer l'ID de la guerre.
-        String warId = String.format("%02d_%02d_%02d_%02d",
-                date.getMonthValue(), date.getDayOfMonth(),
-                time.getHour(), time.getMinute());
-
         WarManager.declareWar(defender, attacker, startDateTime.toString());
 
         // 7) Afficher le récapitulatif.
@@ -116,7 +113,6 @@ public class DeclareWarCommand extends KingdomCommand {
         context.msg(ChatColor.RED    + "  Défenseur  : " + defender.getColor() + defender.getName());
         context.msg(ChatColor.AQUA   + "  Date       : " + dateStr);
         context.msg(ChatColor.AQUA   + "  Heure      : " + timeStr);
-        context.msg(ChatColor.GRAY   + "  ID de la guerre     : " + warId);
         context.msg(ChatColor.GOLD   + "============================");
     }
 
