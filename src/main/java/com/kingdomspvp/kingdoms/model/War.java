@@ -1,12 +1,10 @@
 package com.kingdomspvp.kingdoms.model;
 
-import com.kingdomspvp.kingdoms.model.Kingdom;
-
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-
+import java.util.UUID;
 public class War {
     private final String id; // MM_dd_HH_mm
     private final Kingdom attackerKingdom;
@@ -61,11 +59,7 @@ public class War {
         return Collections.unmodifiableSet(registeredFactions);
     }
 
-    // ------------------
-    // Méthodes métiers
-    // ------------------
-
-    /** Vérifie si l'attaquant a assez de membres pour déclarer (>=1 pour l'instant) **/
+    /** Vérifie si l'attaquant a assez de membres pour déclarer (>=1 pour l'instant, >= 5 plus tard) **/
     public boolean canDeclare() {
         int total = attackerKingdom.getFactions().stream()
                 .mapToInt(f -> f.getFPlayers().size())
@@ -73,13 +67,24 @@ public class War {
         return total >= 1;
     }
 
-    /** Inscrire une faction à la guerre **/
-    public void registerFaction(String factionName) {
-        registeredFactions.add(factionName);
+    private final Set<UUID> attackerPlayers = new HashSet<>();
+    private final Set<UUID> defenderPlayers = new HashSet<>();
+
+    public Set<UUID> getAttackerPlayers() {
+        return Collections.unmodifiableSet(attackerPlayers);
     }
 
-    /** Cette faction est-elle déjà inscrite ? **/
-    public boolean isRegistered(String factionName) {
-        return registeredFactions.contains(factionName);
+    public Set<UUID> getDefenderPlayers() {
+        return Collections.unmodifiableSet(defenderPlayers);
+    }
+
+    /** Retourne true si ajouté, false si déjà présent ou mauvais camp */
+    public boolean addParticipant(UUID playerId, Kingdom playerKingdom) {
+        if (playerKingdom.equals(attackerKingdom)) {
+            return attackerPlayers.add(playerId);
+        } else if (playerKingdom.equals(defenderKingdom)) {
+            return defenderPlayers.add(playerId);
+        }
+        return false; // joueur n'appartient à aucun des deux royaumes
     }
 }

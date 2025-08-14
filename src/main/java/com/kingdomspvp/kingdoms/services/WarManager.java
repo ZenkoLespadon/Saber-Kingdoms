@@ -317,4 +317,34 @@ public class WarManager {
         sb.append(org.bukkit.ChatColor.GRAY).append("]");
         return sb.toString();
     }
+
+    public static void sendMessagetoPlayersOfKingdoms(War war) {
+        Kingdom attacker = war.getAttackerKingdom();
+        Kingdom defender = war.getDefenderKingdom();
+        String dateStr = war.getStartTime().toLocalDate().toString(); // YYYY-MM-DD
+        String timeStr = war.getStartTime().toLocalTime().toString(); // HH:MM
+        for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+            // Récup royaume du joueur en toute sécurité
+            com.massivecraft.factions.FPlayer fpp = com.massivecraft.factions.FPlayers.getInstance().getByPlayer(p);
+            if (fpp == null || fpp.getFaction() == null || fpp.getFaction().isWilderness()) continue;
+            Kingdom pk = com.kingdomspvp.kingdoms.services.KingdomsManager.getKingdomByFactionName(fpp.getFaction().getTag());
+            if (pk == null) continue;
+
+            if (pk.equals(attacker)) {
+                // Joueurs attaquants
+                p.sendMessage(
+                        org.bukkit.ChatColor.GREEN + "⚔ Votre royaume attaque le royaume" + defender.getColor() + defender.getName()
+                                + org.bukkit.ChatColor.GREEN + " le " + org.bukkit.ChatColor.AQUA + dateStr
+                                + org.bukkit.ChatColor.GREEN + " à " + org.bukkit.ChatColor.AQUA + timeStr + org.bukkit.ChatColor.GREEN + "."
+                );
+            } else if (pk.equals(defender)) {
+                // Joueurs défenseurs
+                p.sendMessage(
+                        org.bukkit.ChatColor.RED + "⚠ Votre royaume est attaqué par le royaume " + attacker.getColor() + attacker.getName()
+                                + org.bukkit.ChatColor.RED + " le " + org.bukkit.ChatColor.AQUA + dateStr
+                                + org.bukkit.ChatColor.RED + " à " + org.bukkit.ChatColor.AQUA + timeStr + org.bukkit.ChatColor.RED + "."
+                );
+            }
+        }
+    }
 }

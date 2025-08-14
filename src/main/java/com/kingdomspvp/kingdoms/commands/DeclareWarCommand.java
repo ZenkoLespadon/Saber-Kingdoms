@@ -1,18 +1,22 @@
 package com.kingdomspvp.kingdoms.commands;
 
 import com.kingdomspvp.kingdoms.model.Kingdom;
+import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.Faction;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.entity.Player;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
+import java.util.UUID;
 
 public class DeclareWarCommand extends KingdomCommand {
 
@@ -104,16 +108,9 @@ public class DeclareWarCommand extends KingdomCommand {
             return;
         }
 
-        WarManager.declareWar(defender, attacker, startDateTime.toString());
+        War war = WarManager.declareWar(defender, attacker, startDateTime.toString());
 
-        // 7) Afficher le récapitulatif.
-        context.msg("");
-        context.msg(ChatColor.GOLD   + "=== Déclaration de guerre ===");
-        context.msg(ChatColor.GREEN  + "  Attaquant  : " + attacker.getColor() + attacker.getName());
-        context.msg(ChatColor.RED    + "  Défenseur  : " + defender.getColor() + defender.getName());
-        context.msg(ChatColor.AQUA   + "  Date       : " + dateStr);
-        context.msg(ChatColor.AQUA   + "  Heure      : " + timeStr);
-        context.msg(ChatColor.GOLD   + "============================");
+        WarManager.sendMessagetoPlayersOfKingdoms(war);
     }
 
     @Override
