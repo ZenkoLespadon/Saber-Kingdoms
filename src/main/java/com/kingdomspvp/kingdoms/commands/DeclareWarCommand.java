@@ -1,7 +1,9 @@
 package com.kingdomspvp.kingdoms.commands;
 
+import com.kingdomspvp.kingdoms.model.Claim;
 import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.model.War;
+import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
 import com.massivecraft.factions.FPlayer;
@@ -16,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 public class DeclareWarCommand extends KingdomCommand {
@@ -79,6 +82,15 @@ public class DeclareWarCommand extends KingdomCommand {
             return;
         }
 
+        List<Claim> attackable = ClaimManager.getDefenderClaimsAdjacentToAttacker(
+                defender.getName(), attacker.getName()
+        );
+        if (attackable.isEmpty()) {
+            context.msg(ChatColor.RED + "Aucune frontière commune : votre royaume n'a pas de claim adjacent à "
+                    + defender.getName() + ". Déclaration refusée.");
+            return;
+        }
+
         LocalDate date;
         LocalTime time;
         try {
@@ -108,8 +120,7 @@ public class DeclareWarCommand extends KingdomCommand {
             return;
         }
 
-        War war = WarManager.declareWar(defender, attacker, startDateTime.toString());
-
+        War war = WarManager.declareWar(defender, attacker, startDateTime.toString(), attackable);
         WarManager.sendMessagetoPlayersOfKingdoms(war);
     }
 

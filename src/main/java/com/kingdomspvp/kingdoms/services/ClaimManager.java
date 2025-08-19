@@ -162,5 +162,18 @@ public class ClaimManager {
                (gridX == max && gridZ == max);
     }
 
+    // services/ClaimManager.java
+    public static List<Claim> getDefenderClaimsAdjacentToAttacker(String defenderKingdom, String attackerKingdom) {
+        List<Claim> result = new ArrayList<>();
+        for (Claim c : getClaims()) {
+            if (defenderKingdom.equalsIgnoreCase(c.getKingdomName())) {
+                if (isAdjacentToKingdomClaim(c, attackerKingdom)) {
+                    result.add(c);
+                }
+            }
+        }
+        return result;
+    }
+
 
 }

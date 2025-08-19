@@ -1,17 +1,26 @@
 package com.kingdomspvp.kingdoms.model;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+
 public class War {
     private final String id; // MM_dd_HH_mm
     private final Kingdom attackerKingdom;
     private final Kingdom defenderKingdom;
     private final LocalDateTime startTime;
     private WarStatus status;
-    private final Set<String> registeredFactions = new HashSet<>();
+    // com.kingdomspvp.kingdoms.model.War
+    private boolean combatStarted = false;
+
+
+    private final Set<UUID> attackerPlayers = new HashSet<>();
+    private final Set<UUID> defenderPlayers = new HashSet<>();
+
+    public boolean hasCombatStarted() { return combatStarted; }
+    private Integer attackedGridX;
+    private Integer attackedGridZ;
+
+    private final Set<String> attackableDefenderClaims = new HashSet<>();
 
     public War(String id, Kingdom attacker, Kingdom defender, LocalDateTime start) {
         this.id = id;
@@ -54,11 +63,6 @@ public class War {
         this.status = status;
     }
 
-    /** Liste immuable des factions inscrites **/
-    public Set<String> getRegisteredFactions() {
-        return Collections.unmodifiableSet(registeredFactions);
-    }
-
     /** Vérifie si l'attaquant a assez de membres pour déclarer (>=1 pour l'instant, >= 5 plus tard) **/
     public boolean canDeclare() {
         int total = attackerKingdom.getFactions().stream()
@@ -66,9 +70,6 @@ public class War {
                 .sum();
         return total >= 1;
     }
-
-    private final Set<UUID> attackerPlayers = new HashSet<>();
-    private final Set<UUID> defenderPlayers = new HashSet<>();
 
     public Set<UUID> getAttackerPlayers() {
         return Collections.unmodifiableSet(attackerPlayers);
@@ -86,5 +87,29 @@ public class War {
             return defenderPlayers.add(playerId);
         }
         return false; // joueur n'appartient à aucun des deux royaumes
+    }
+
+
+    public void markCombatStarted(int gridX, int gridZ) {
+        this.combatStarted = true;
+        this.attackedGridX = gridX;
+        this.attackedGridZ = gridZ;
+    }
+    public Integer getAttackedGridX() { return attackedGridX; }
+    public Integer getAttackedGridZ() { return attackedGridZ; }
+
+    public void setAttackableDefenderClaims(Collection<Claim> claims) {
+        this.attackableDefenderClaims.clear();
+        for (Claim c : claims) {
+            this.attackableDefenderClaims.add(c.getGridX() + "," + c.getGridZ());
+        }
+    }
+
+    public Set<String> getAttackableDefenderClaims() {
+        return Collections.unmodifiableSet(attackableDefenderClaims);
+    }
+
+    public boolean isAttackable(int gridX, int gridZ) {
+        return attackableDefenderClaims.contains(gridX + "," + gridZ);
     }
 }
