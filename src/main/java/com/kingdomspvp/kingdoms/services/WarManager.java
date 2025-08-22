@@ -8,6 +8,7 @@ import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.utils.Callback;
+import com.kingdomspvp.kingdoms.utils.ClaimVisualization;
 import com.kingdomspvp.kingdoms.utils.WarsJSON;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
@@ -37,7 +38,7 @@ import net.md_5.bungee.api.chat.hover.content.Text;
 
 public class WarManager {
 
-    // TODO : Détection du claim attaqué
+    // TODO : Affichage uniquemet des claims attaques avec les particules
     // TODO : TP des gens inscrits à l'endroit du claim attaqué
     // TODO : Faire l'annonce de la guerre à tous les joueurs lors de l'inscription et dire quelle faction l'a déclarée
 
@@ -195,12 +196,13 @@ public class WarManager {
             Bukkit.getLogger().warning("[WarManager] startWar ignoré (ID=" + w.getId() + ", statut=" + w.getStatus() + ")");
             return;
         }
-        w.setStatus(WarStatus.INPROGRESS);
 
         w.setStatus(WarStatus.INPROGRESS);
         warsJSON.addWar(w);
+
+        ClaimVisualization.startWarOutlines(w);
         enableDetectionFor(w);
-        sendToRegisteredPlayers(w, buildWaitForAttackMessage());
+        sendToAttackers(w, buildWaitForAttackMessage());
         org.bukkit.Bukkit.getPluginManager().callEvent(new WarStartEvent(w));
         Bukkit.getPluginManager().callEvent(new WarStartEvent(w));
     }
@@ -268,7 +270,6 @@ public class WarManager {
         boolean added = war.addParticipant(player.getUniqueId(), k);
         if (added) {
             warsJSON.addWar(war);
-
         }
         return added;
     }
@@ -408,6 +409,7 @@ public class WarManager {
         warsJSON.addWar(w);
         disableDetectionFor(w.getId());
         sendToRegisteredPlayers(w, buildJoinWarNowMessage(w.getId()));
+        ClaimVisualization.switchToAttackedClaimOnly(w, to);
         System.out.println("Premier claim attaqué pour la guerre " + w.getId()
                 + " dans le royaume " + to.getKingdomName()
                 + " (coordonnées : " + to.getGridX() + ", " + to.getGridZ() + ")");
@@ -445,4 +447,27 @@ public class WarManager {
         return new BaseComponent[]{ root };
     }
 
+    // services/WarManager.java
+    public static void sendToAttackers(War w, BaseComponent[] comps) {
+        for (java.util.UUID id : w.getAttackerPlayers()) {
+            var p = org.bukkit.Bukkit.getPlayer(id);
+            if (p != null && p.isOnline()) p.spigot().sendMessage(comps);
+        }
+    }
+
+    public static void sendToDefenders(War w, BaseComponent[] comps) {
+        for (java.util.UUID id : w.getDefenderPlayers()) {
+            var p = org.bukkit.Bukkit.getPlayer(id);
+            if (p != null && p.isOnline()) p.spigot().sendMessage(comps);
+        }
+    }
+
+    // (Optionnel) surcharges pratiques en texte legacy
+    public static void sendToAttackers(War w, String legacy) {
+        sendToAttackers(w, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(legacy));
+    }
+
+    public static void sendToDefenders(War w, String legacy) {
+        sendToDefenders(w, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(legacy));
+    }
 }
