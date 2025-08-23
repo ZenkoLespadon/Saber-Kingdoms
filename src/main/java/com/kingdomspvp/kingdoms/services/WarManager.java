@@ -262,7 +262,6 @@ public class WarManager {
         if (war == null) return false;
         if (war.getStatus() == WarStatus.ENDED) return false;
 
-        // éligible = membre d’un des deux royaumes
         Kingdom k = getPlayerKingdom(player);
         if (k == null) return false;
         if (!k.equals(war.getAttackerKingdom()) && !k.equals(war.getDefenderKingdom())) return false;
@@ -273,6 +272,7 @@ public class WarManager {
         }
         return added;
     }
+
 
     private static Kingdom getPlayerKingdom(Player p) {
         FPlayer fp = FPlayers.getInstance().getByPlayer(p);
@@ -441,7 +441,7 @@ public class WarManager {
     public static BaseComponent[] buildJoinWarNowMessage(String warId) {
         TextComponent root = new TextComponent(ChatColor.GOLD + "La guerre commence, ");
         TextComponent btn  = new TextComponent(ChatColor.GREEN + "[cliquez ici pour rejoindre la guerre]");
-        btn.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/k _join " + warId));
+        btn.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/k _tp_to_war " + warId));
         btn.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Rejoindre la guerre " + warId)));
         root.addExtra(btn);
         return new BaseComponent[]{ root };

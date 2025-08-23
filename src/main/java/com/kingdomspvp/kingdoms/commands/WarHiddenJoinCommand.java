@@ -1,8 +1,12 @@
 package com.kingdomspvp.kingdoms.commands;
 
+import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.model.War;
+import com.kingdomspvp.kingdoms.model.WarStatus;
+import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
-import net.md_5.bungee.api.chat.TextComponent;
+import com.massivecraft.factions.FPlayer;
+import com.massivecraft.factions.FPlayers;
 import org.bukkit.ChatColor;
 import java.util.Arrays;
 
@@ -22,6 +26,21 @@ public class WarHiddenJoinCommand extends KingdomCommand {
             context.msg(ChatColor.GREEN + "Inscription enregistrée.");
             War war = WarManager.getWar(warId);
             context.player.spigot().sendMessage(WarManager.buildParticipantsMessage(war));
+
+            // 2) Si guerre démarrée mais pas encore d'attaque, envoyer l’instruction aux ATTAQUANTS
+            if (war != null
+                    && war.getStatus() == WarStatus.INPROGRESS
+                    && !war.hasCombatStarted()) {
+
+                // Récupérer le royaume du joueur
+                FPlayer fp = FPlayers.getInstance().getByPlayer(context.player);
+                if (fp != null && fp.getFaction() != null && !fp.getFaction().isWilderness()) {
+                    Kingdom playerKingdom = KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
+                    if (playerKingdom != null && playerKingdom.equals(war.getAttackerKingdom())) {
+                        context.player.spigot().sendMessage(WarManager.buildWaitForAttackMessage());
+                    }
+                }
+            }
         } else {
             context.msg(ChatColor.RED + "Inscription refusée (non éligible ou guerre terminée).");
         }
