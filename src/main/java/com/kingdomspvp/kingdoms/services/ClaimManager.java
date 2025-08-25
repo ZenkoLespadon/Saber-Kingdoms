@@ -176,4 +176,13 @@ public class ClaimManager {
     }
 
 
+    public static List<Claim> getClaimsByKingdomName(String name) {
+        List<Claim> result = new ArrayList<>();
+        for (Claim c : getClaims()) {
+            if (name.equalsIgnoreCase(c.getKingdomName())) {
+                result.add(c);
+            }
+        }
+        return result;
+    }
 }

@@ -1,6 +1,5 @@
 package com.kingdomspvp.kingdoms.services;
 
-import com.kingdomspvp.kingdoms.events.WarEndEvent;
 import com.kingdomspvp.kingdoms.events.WarStartEvent;
 import com.kingdomspvp.kingdoms.listeners.WarClaimListener;
 import com.kingdomspvp.kingdoms.model.Claim;
@@ -20,7 +19,9 @@ import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.HandlerList;
 
@@ -29,35 +30,43 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-import net.md_5.bungee.api.chat.BaseComponent;
-import net.md_5.bungee.api.chat.TextComponent;
-import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.hover.content.Text;
-
+/**
+ * Gère la vie des guerres (hors phase pré-guerre : déclaration, inscriptions, délais).
+ * - Planification démarrage et prompts d'inscription.
+ * - Passage en INPROGRESS, détection du premier claim attaqué.
+ * - Messages cliquables, téléports (via WarRuntime), persistance JSON.
+ */
 public class WarManager {
-
-    // TODO : Affichage uniquemet des claims attaques avec les particules
-    // TODO : TP des gens inscrits à l'endroit du claim attaqué
-    // TODO : Faire l'annonce de la guerre à tous les joueurs lors de l'inscription et dire quelle faction l'a déclarée
 
     public static final Duration MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
     public static final Duration MAX_TIME_BEFORE_WAR = Duration.ofMinutes(20);
 
-    public static Duration JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(30);// passer à ofMinutes(5) à la beta
+    /** Délai avant le début pour afficher le bouton d'inscription. */
+    public static Duration JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(30); // ex. passez à 5 min en beta
+
+    /** Taille de claim (en blocs), reprise du ClaimManager. */
+    public static final int CLAIM_SIZE = ClaimManager.CLAIM_SIZE;
 
     private static final WarsJSON warsJSON = new WarsJSON();
 
-    // Guerres à surveiller pendant la fenêtre de détection (INPROGRESS & !combatStarted)
+    /** Monde de référence (claims uniquement en Overworld). */
+    private static final World world = getOverworld();
+
+    // --- Détection du premier claim attaqué (fenêtre courte en début de guerre) ---
+
+    /** Guerres à surveiller pendant la fenêtre de détection (INPROGRESS & !combatStarted). */
     private static final Map<String, War> ACTIVE_DETECTION_WARS = new java.util.concurrent.ConcurrentHashMap<>();
     private static WarClaimListener claimListener; // null si non enregistré
     private static boolean claimListenerRegistered = false;
 
-    // Fenêtre max de détection avant auto-arrêt (optionnel)
-    public static final java.time.Duration DETECTION_WINDOW = java.time.Duration.ofMinutes(2);
-    // Tâches de time-out par guerre
+    /** Fenêtre max de détection avant auto-arrêt. */
+    public static final Duration DETECTION_WINDOW = Duration.ofMinutes(2);
+    /** Tâches de time-out par guerre. */
     private static final Map<String, Integer> detectionTimeoutTasks = new java.util.concurrent.ConcurrentHashMap<>();
+
+    // ------------------------------------------------------------------------
+    // Chargement & planification
+    // ------------------------------------------------------------------------
 
     public static void loadWars(Callback<Boolean> success) {
         warsJSON.load(success);
@@ -66,6 +75,12 @@ public class WarManager {
         scheduleHourlyCleanup();
     }
 
+    private static World getOverworld() {
+        for (World w : Bukkit.getWorlds()) {
+            if (w.getEnvironment() == World.Environment.NORMAL) return w;
+        }
+        return Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0);
+    }
 
     public static Map<String, War> getWars() {
         return warsJSON.getAllWars();
@@ -77,12 +92,9 @@ public class WarManager {
 
     public static Map<String, War> getWarsOfKingdom(Kingdom kingdom) {
         Map<String, War> warsOfKingdom = new HashMap<>();
-        // itère sur toutes les guerres stockées
         for (Map.Entry<String, War> entry : warsJSON.getAllWars().entrySet()) {
             War w = entry.getValue();
-            // si le royaume est attaquant ou défenseur, on l'ajoute
-            if (w.getAttackerKingdom().equals(kingdom)
-                    || w.getDefenderKingdom().equals(kingdom)) {
+            if (w.getAttackerKingdom().equals(kingdom) || w.getDefenderKingdom().equals(kingdom)) {
                 warsOfKingdom.put(entry.getKey(), w);
             }
         }
@@ -92,13 +104,10 @@ public class WarManager {
     public static boolean hasPendingWar(Kingdom attacker, Kingdom defender) {
         return warsJSON.getAllWars().values().stream()
                 .filter(w -> w.getStatus() == WarStatus.REGISTRATION || w.getStatus() == WarStatus.INPROGRESS)
-                .anyMatch(w ->
-                        w.getAttackerKingdom().equals(attacker)
-                                && w.getDefenderKingdom().equals(defender)
-                );
+                .anyMatch(w -> w.getAttackerKingdom().equals(attacker) && w.getDefenderKingdom().equals(defender));
     }
 
-    // services/WARManager.java
+    /** Déclare une guerre et la planifie (début + prompt d'inscription). */
     public static War declareWar(Kingdom defender, Kingdom attacker, String when, List<Claim> attackableDefClaims) {
         int nextId = warsJSON.getAllWars().keySet().stream()
                 .map(idStr -> { try { return Integer.parseInt(idStr); } catch (NumberFormatException e) { return 0; } })
@@ -114,8 +123,7 @@ public class WarManager {
         return war;
     }
 
-
-
+    /** Replanifie ce qui doit l'être après un redémarrage. */
     private static void schedulePending() {
         LocalDateTime now = LocalDateTime.now();
         for (Map.Entry<String, War> e : warsJSON.getAllWars().entrySet()) {
@@ -130,13 +138,14 @@ public class WarManager {
                     Bukkit.getLogger().info("[WarManager] Guerre expirée supprimée au démarrage (ID=" + id + ")");
                 }
             } else if (w.getStatus() == WarStatus.INPROGRESS) {
+                // Sécurité : on ne relance pas une guerre en cours au reboot
                 warsJSON.removeWar(id);
                 Bukkit.getLogger().info("[WarManager] Guerre en cours annulée après redémarrage (ID=" + id + ")");
             }
         }
     }
 
-
+    /** Planifie le démarrage et le prompt d'inscription. */
     private static void schedule(War w) {
         long millisToStart = Duration.between(LocalDateTime.now(), w.getStartTime()).toMillis();
         if (millisToStart <= 0) {
@@ -146,20 +155,20 @@ public class WarManager {
         }
         long delayTicks = millisToStart / 50L;
 
-        // planifie le start
+        // Démarrage
         Bukkit.getScheduler().runTaskLater(
                 FactionsPlugin.getInstance(),
                 () -> startWar(w),
                 delayTicks
         );
 
-        // planifie le prompt “pré‑guerre”
+        // Prompt d'inscription
         long leadMillis = JOIN_PROMPT_LEAD_TIME.toMillis();
         long promptMillis = Math.max(0, millisToStart - leadMillis);
         long promptTicks = promptMillis / 50L;
         Bukkit.getScheduler().runTaskLater(
                 FactionsPlugin.getInstance(),
-                () -> sendJoinPrompt(w, /*prefix*/ "§6La guerre va commencer bientôt ! "),
+                () -> sendJoinPrompt(w, "§6La guerre va commencer bientôt ! "),
                 promptTicks
         );
     }
@@ -167,30 +176,27 @@ public class WarManager {
     private static void sendJoinPrompt(War w, String prefix) {
         String cmd = "/k _warjoin " + w.getId();
 
-        // Préfixe
         TextComponent msg = new TextComponent(prefix == null ? "" : prefix);
         msg.setColor(ChatColor.GOLD);
 
-        // Bouton cliquable
         TextComponent button = new TextComponent("[CLIQUE POUR T'INSCRIRE]");
         button.setColor(ChatColor.GREEN);
         button.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd));
         button.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                 new Text("S'inscrire à la guerre " + w.getId())));
 
-        // Assembler préfixe + bouton
         msg.addExtra(button);
 
-        // Envoi aux joueurs éligibles
         for (Player p : Bukkit.getOnlinePlayers()) {
             Kingdom k = getPlayerKingdom(p);
             if (k == null) continue;
             if (k.equals(w.getAttackerKingdom()) || k.equals(w.getDefenderKingdom())) {
-                p.spigot().sendMessage(msg); // ✅ Envoi avec API Bungee
+                p.spigot().sendMessage(msg);
             }
         }
     }
 
+    /** Passe la guerre en INPROGRESS, lance la fenêtre de détection et le runtime. */
     private static void startWar(War w) {
         if (w.getStatus() != WarStatus.REGISTRATION) {
             Bukkit.getLogger().warning("[WarManager] startWar ignoré (ID=" + w.getId() + ", statut=" + w.getStatus() + ")");
@@ -203,17 +209,23 @@ public class WarManager {
         ClaimVisualization.startWarOutlines(w);
         enableDetectionFor(w);
         sendToAttackers(w, buildWaitForAttackMessage());
-        org.bukkit.Bukkit.getPluginManager().callEvent(new WarStartEvent(w));
+
+        // Un seul envoi de l'événement
         Bukkit.getPluginManager().callEvent(new WarStartEvent(w));
+
+        // ➜ Démarrer le runtime de guerre (timer, UIs, scoring, etc.)
+        WarRuntime.begin(w);
     }
+
+    // ------------------------------------------------------------------------
+    // Maintenance périodique
+    // ------------------------------------------------------------------------
 
     public static int cleanupExpiredRegistrations() {
         Bukkit.getLogger().info("[WarManager] Nettoyage des guerres...");
         LocalDateTime now = LocalDateTime.now();
 
         Map<String, War> wars = getWars();
-        Bukkit.getLogger().info("[WarManager] " + wars.size() + " guerre(s) à analyser.");
-
         List<String> toRemove = new ArrayList<>();
 
         for (Map.Entry<String, War> entry : wars.entrySet()) {
@@ -221,16 +233,8 @@ public class WarManager {
             War w = entry.getValue();
             LocalDateTime start = w.getStartTime();
 
-            Bukkit.getLogger().info("[WarManager] Test guerre ID=" + id
-                    + " | Statut=" + w.getStatus()
-                    + " | Début=" + start
-                    + " | Maintenant=" + now);
-
             if (w.getStatus() == WarStatus.REGISTRATION && !start.isAfter(now)) {
-                Bukkit.getLogger().info("[WarManager]  -> Marquée pour suppression (expirée)");
                 toRemove.add(id);
-            } else {
-                Bukkit.getLogger().info("[WarManager]  -> Conservée");
             }
         }
 
@@ -238,24 +242,22 @@ public class WarManager {
             warsJSON.removeWar(id);
             Bukkit.getLogger().info("[WarManager] Guerre supprimée (ID=" + id + ")");
         }
-        if (toRemove.isEmpty()) {
-            Bukkit.getLogger().info("[WarManager] Aucune guerre expirée supprimée.");
-        } else {
-            Bukkit.getLogger().info("[WarManager] " + toRemove.size() + " guerre(s) expirée(s) supprimée(s).");
-        }
-
         return toRemove.size();
     }
 
     private static void scheduleHourlyCleanup() {
-        long ticksHour = 20L * 60 * 60; // 20 ticks * 60 secondes * 60 minutes = 1 heure
+        long ticksHour = 20L * 60 * 60;
         Bukkit.getScheduler().runTaskTimer(
                 FactionsPlugin.getInstance(),
                 WarManager::cleanupExpiredRegistrations,
-                ticksHour,   // délai avant le premier run (1 h)
-                ticksHour    // intervalle entre deux exécutions (1 h)
+                ticksHour,
+                ticksHour
         );
     }
+
+    // ------------------------------------------------------------------------
+    // Inscriptions
+    // ------------------------------------------------------------------------
 
     public static boolean registerPlayerIfEligible(String warId, Player player) {
         War war = getWar(warId);
@@ -273,35 +275,35 @@ public class WarManager {
         return added;
     }
 
-
     private static Kingdom getPlayerKingdom(Player p) {
         FPlayer fp = FPlayers.getInstance().getByPlayer(p);
         if (fp == null || fp.getFaction() == null || fp.getFaction().isWilderness()) return null;
         return KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
     }
 
+    // ------------------------------------------------------------------------
+    // Messages
+    // ------------------------------------------------------------------------
+
     public static BaseComponent[] buildParticipantsMessage(War w) {
-        // Couleurs de royaumes (Bukkit ChatColor -> legacy § codes, OK pour fromLegacyText)
         org.bukkit.ChatColor atkColor = w.getAttackerKingdom().getColor();
         org.bukkit.ChatColor defColor = w.getDefenderKingdom().getColor();
 
-        // Noms
-        java.util.List<String> attackers = uuidsToNames(w.getAttackerPlayers());
-        java.util.List<String> defenders = uuidsToNames(w.getDefenderPlayers());
+        List<String> attackers = uuidsToNames(w.getAttackerPlayers());
+        List<String> defenders = uuidsToNames(w.getDefenderPlayers());
 
         String attackersLine = formatLine("Attaquants :", attackers, atkColor);
         String defendersLine = formatLine("Défenseurs :", defenders, defColor);
 
-        String legacy =
-                org.bukkit.ChatColor.GOLD + attackersLine + "\n" +
-                        org.bukkit.ChatColor.GOLD + defendersLine;
+        String legacy = org.bukkit.ChatColor.GOLD + attackersLine + "\n" +
+                org.bukkit.ChatColor.GOLD + defendersLine;
 
         return TextComponent.fromLegacyText(legacy);
     }
 
-    private static java.util.List<String> uuidsToNames(java.util.Collection<java.util.UUID> uuids) {
-        java.util.List<String> names = new java.util.ArrayList<>(uuids.size());
-        for (java.util.UUID id : uuids) {
+    private static List<String> uuidsToNames(Collection<UUID> uuids) {
+        List<String> names = new ArrayList<>(uuids.size());
+        for (UUID id : uuids) {
             OfflinePlayer op = Bukkit.getOfflinePlayer(id);
             String name = op != null ? op.getName() : null;
             names.add(name != null ? name : id.toString().substring(0, 8));
@@ -310,7 +312,7 @@ public class WarManager {
         return names;
     }
 
-    private static String formatLine(String title, java.util.List<String> names, org.bukkit.ChatColor nameColor) {
+    private static String formatLine(String title, List<String> names, org.bukkit.ChatColor nameColor) {
         StringBuilder sb = new StringBuilder();
         sb.append(title).append("\n");
         sb.append(org.bukkit.ChatColor.GRAY).append("[");
@@ -319,8 +321,7 @@ public class WarManager {
         } else {
             for (int i = 0; i < names.size(); i++) {
                 if (i > 0) sb.append(org.bukkit.ChatColor.GRAY).append(", ");
-                sb.append(nameColor).append(names.get(i))
-                        .append(org.bukkit.ChatColor.RESET);
+                sb.append(nameColor).append(names.get(i)).append(org.bukkit.ChatColor.RESET);
             }
         }
         sb.append(org.bukkit.ChatColor.GRAY).append("]");
@@ -330,24 +331,21 @@ public class WarManager {
     public static void sendMessagetoPlayersOfKingdoms(War war) {
         Kingdom attacker = war.getAttackerKingdom();
         Kingdom defender = war.getDefenderKingdom();
-        String dateStr = war.getStartTime().toLocalDate().toString(); // YYYY-MM-DD
-        String timeStr = war.getStartTime().toLocalTime().toString(); // HH:MM
-        for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
-            // Récup royaume du joueur en toute sécurité
-            com.massivecraft.factions.FPlayer fpp = com.massivecraft.factions.FPlayers.getInstance().getByPlayer(p);
+        String dateStr = war.getStartTime().toLocalDate().toString();
+        String timeStr = war.getStartTime().toLocalTime().toString();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            FPlayer fpp = FPlayers.getInstance().getByPlayer(p);
             if (fpp == null || fpp.getFaction() == null || fpp.getFaction().isWilderness()) continue;
-            Kingdom pk = com.kingdomspvp.kingdoms.services.KingdomsManager.getKingdomByFactionName(fpp.getFaction().getTag());
+            Kingdom pk = KingdomsManager.getKingdomByFactionName(fpp.getFaction().getTag());
             if (pk == null) continue;
 
             if (pk.equals(attacker)) {
-                // Joueurs attaquants
                 p.sendMessage(
                         org.bukkit.ChatColor.GREEN + "⚔ Votre royaume attaque le royaume " + defender.getColor() + defender.getName()
                                 + org.bukkit.ChatColor.GREEN + " le " + org.bukkit.ChatColor.AQUA + dateStr
                                 + org.bukkit.ChatColor.GREEN + " à " + org.bukkit.ChatColor.AQUA + timeStr + org.bukkit.ChatColor.GREEN + "."
                 );
             } else if (pk.equals(defender)) {
-                // Joueurs défenseurs
                 p.sendMessage(
                         org.bukkit.ChatColor.RED + "⚠ Votre royaume est attaqué par le royaume " + attacker.getColor() + attacker.getName()
                                 + org.bukkit.ChatColor.RED + " le " + org.bukkit.ChatColor.AQUA + dateStr
@@ -357,117 +355,195 @@ public class WarManager {
         }
     }
 
-    private static void ensureClaimListenerRegistered() {
-        if (!claimListenerRegistered) {
-            claimListener = new WarClaimListener(ACTIVE_DETECTION_WARS);
-            org.bukkit.Bukkit.getPluginManager().registerEvents(claimListener, FactionsPlugin.getInstance());
-            claimListenerRegistered = true;
-        }
-    }
-
-    private static void unregisterClaimListenerIfIdle() {
-        if (claimListenerRegistered && ACTIVE_DETECTION_WARS.isEmpty()) {
-            HandlerList.unregisterAll();
-            claimListenerRegistered = false;
-            claimListener = null;
-        }
-    }
-
-    // À appeler quand une guerre passe à INPROGRESS
-    private static void enableDetectionFor(War w) {
-        ACTIVE_DETECTION_WARS.put(w.getId(), w);
-        ensureClaimListenerRegistered();
-
-        // planifier un arrêt automatique de la détection pour cette guerre
-        long ticks = DETECTION_WINDOW.toSeconds() * 20L;
-        int taskId = org.bukkit.Bukkit.getScheduler().scheduleSyncDelayedTask(
-                FactionsPlugin.getInstance(),
-                () -> disableDetectionFor(w.getId()), // si rien ne s'est passé
-                ticks
-        );
-        detectionTimeoutTasks.put(w.getId(), taskId);
-    }
-
-    // À appeler quand un claim est attaqué OU quand la fenêtre expire
-    private static void disableDetectionFor(String warId) {
-        ACTIVE_DETECTION_WARS.remove(warId);
-
-        Integer tid = detectionTimeoutTasks.remove(warId);
-        if (tid != null) {
-            org.bukkit.Bukkit.getScheduler().cancelTask(tid);
-        }
-        unregisterClaimListenerIfIdle();
-    }
-
-    // services/WarManager.java
-    public static void handleFirstClaimAttacked(War w, Claim to) {
-        if (w.hasCombatStarted()) return;
-        // ➜ sécurité supplémentaire
-        if (!w.isAttackable(to.getGridX(), to.getGridZ())) return;
-
-        w.markCombatStarted(to.getGridX(), to.getGridZ());
-        warsJSON.addWar(w);
-        disableDetectionFor(w.getId());
-        sendToRegisteredPlayers(w, buildJoinWarNowMessage(w.getId()));
-        ClaimVisualization.switchToAttackedClaimOnly(w, to);
-        System.out.println("Premier claim attaqué pour la guerre " + w.getId()
-                + " dans le royaume " + to.getKingdomName()
-                + " (coordonnées : " + to.getGridX() + ", " + to.getGridZ() + ")");
-    }
-
     public static void sendToRegisteredPlayers(War w, BaseComponent[] comps) {
-
-        System.out.println("message send");
-        // attaquants
-        for (java.util.UUID id : w.getAttackerPlayers()) {
-            var p = Bukkit.getPlayer(id);
+        for (UUID id : w.getAttackerPlayers()) {
+            Player p = Bukkit.getPlayer(id);
             if (p != null && p.isOnline()) p.spigot().sendMessage(comps);
         }
-        // défenseurs
-        for (java.util.UUID id : w.getDefenderPlayers()) {
-            var p = Bukkit.getPlayer(id);
+        for (UUID id : w.getDefenderPlayers()) {
+            Player p = Bukkit.getPlayer(id);
             if (p != null && p.isOnline()) p.spigot().sendMessage(comps);
         }
     }
 
-    // Message “attendez le début”
     public static BaseComponent[] buildWaitForAttackMessage() {
-        return TextComponent.fromLegacyText(
-                ChatColor.GOLD + "Attaquez un claim pour commencer la guerre"
-        );
+        return TextComponent.fromLegacyText(ChatColor.GOLD + "Attaquez un claim pour commencer la guerre");
     }
 
-    // Message “rejoindre la guerre” (cliquable)
-    public static BaseComponent[] buildJoinWarNowMessage(String warId) {
+    /** Bouton “rejoindre maintenant” → TP vers la guerre (commande cachée _tp_to_war). */
+    public static BaseComponent[] buildTpToWarNowMessage(String warId) {
         TextComponent root = new TextComponent(ChatColor.GOLD + "La guerre commence, ");
-        TextComponent btn  = new TextComponent(ChatColor.GREEN + "[cliquez ici pour rejoindre la guerre]");
+        TextComponent btn  = new TextComponent(ChatColor.GREEN + "[cliquez ici pour vous téléporter à la guerre]");
         btn.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/k _tp_to_war " + warId));
         btn.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Rejoindre la guerre " + warId)));
         root.addExtra(btn);
         return new BaseComponent[]{ root };
     }
 
-    // services/WarManager.java
     public static void sendToAttackers(War w, BaseComponent[] comps) {
-        for (java.util.UUID id : w.getAttackerPlayers()) {
-            var p = org.bukkit.Bukkit.getPlayer(id);
+        for (UUID id : w.getAttackerPlayers()) {
+            Player p = Bukkit.getPlayer(id);
             if (p != null && p.isOnline()) p.spigot().sendMessage(comps);
         }
     }
 
     public static void sendToDefenders(War w, BaseComponent[] comps) {
-        for (java.util.UUID id : w.getDefenderPlayers()) {
-            var p = org.bukkit.Bukkit.getPlayer(id);
+        for (UUID id : w.getDefenderPlayers()) {
+            Player p = Bukkit.getPlayer(id);
             if (p != null && p.isOnline()) p.spigot().sendMessage(comps);
         }
     }
 
-    // (Optionnel) surcharges pratiques en texte legacy
     public static void sendToAttackers(War w, String legacy) {
-        sendToAttackers(w, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(legacy));
+        sendToAttackers(w, TextComponent.fromLegacyText(legacy));
     }
 
     public static void sendToDefenders(War w, String legacy) {
-        sendToDefenders(w, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(legacy));
+        sendToDefenders(w, TextComponent.fromLegacyText(legacy));
+    }
+
+    // ------------------------------------------------------------------------
+    // Détection du premier claim attaqué
+    // ------------------------------------------------------------------------
+
+    private static void ensureClaimListenerRegistered() {
+        if (!claimListenerRegistered) {
+            claimListener = new WarClaimListener(ACTIVE_DETECTION_WARS);
+            Bukkit.getPluginManager().registerEvents(claimListener, FactionsPlugin.getInstance());
+            claimListenerRegistered = true;
+        }
+    }
+
+    private static void unregisterClaimListenerIfIdle() {
+        if (claimListenerRegistered && ACTIVE_DETECTION_WARS.isEmpty()) {
+            // Désinscription ciblée du listener de ce plugin
+            HandlerList.unregisterAll(claimListener);
+            claimListenerRegistered = false;
+            claimListener = null;
+        }
+    }
+
+    /** À appeler quand une guerre passe à INPROGRESS. */
+    private static void enableDetectionFor(War w) {
+        ACTIVE_DETECTION_WARS.put(w.getId(), w);
+        ensureClaimListenerRegistered();
+
+        long ticks = DETECTION_WINDOW.toSeconds() * 20L;
+        int taskId = Bukkit.getScheduler().scheduleSyncDelayedTask(
+                FactionsPlugin.getInstance(),
+                () -> disableDetectionFor(w.getId()),
+                ticks
+        );
+        detectionTimeoutTasks.put(w.getId(), taskId);
+    }
+
+    /** À appeler quand un claim est attaqué OU quand la fenêtre expire. */
+    private static void disableDetectionFor(String warId) {
+        ACTIVE_DETECTION_WARS.remove(warId);
+
+        Integer tid = detectionTimeoutTasks.remove(warId);
+        if (tid != null) {
+            Bukkit.getScheduler().cancelTask(tid);
+        }
+        unregisterClaimListenerIfIdle();
+    }
+
+    /** Appelé par le listener quand le premier claim défenseur est engagé par un attaquant. */
+    public static void handleFirstClaimAttacked(War w, Claim to) {
+        if (w.hasCombatStarted()) return;
+        if (!w.isAttackable(to.getGridX(), to.getGridZ())) return;
+
+        w.markCombatStarted(to.getGridX(), to.getGridZ());
+        warsJSON.addWar(w);
+        disableDetectionFor(w.getId());
+
+        // ➜ Notifie et propose le TP immédiat
+        sendToRegisteredPlayers(w, buildTpToWarNowMessage(w.getId()));
+        ClaimVisualization.switchToAttackedClaimOnly(w, to);
+
+        // ➜ Informe le runtime pour qu'il connaisse la zone d'affrontement
+        WarRuntime.onFirstClaimAttacked(w, to);
+
+        Bukkit.getLogger().info("Premier claim attaqué pour la guerre " + w.getId()
+                + " dans le royaume " + to.getKingdomName()
+                + " (grid : " + to.getGridX() + "," + to.getGridZ() + ")");
+    }
+
+    // ------------------------------------------------------------------------
+    // Utilitaires de claims / positions
+    // ------------------------------------------------------------------------
+
+    /** Claim actuellement attaqué (selon coordonnées stockées dans War). */
+    public static Claim getAttackedClaim(War w) {
+        Integer gx = w.getAttackedGridX();
+        Integer gz = w.getAttackedGridZ();
+        if (gx == null || gz == null) return null;
+        int centerX = gx * CLAIM_SIZE + CLAIM_SIZE / 2;
+        int centerZ = gz * CLAIM_SIZE + CLAIM_SIZE / 2;
+        return ClaimManager.getClaimByCoordinates(centerX, centerZ);
+    }
+
+    /** Centre d’un claim en Overworld. */
+    public static Location getClaimCenter(Claim c) {
+        int cx = c.getGridX() * CLAIM_SIZE + CLAIM_SIZE / 2;
+        int cz = c.getGridZ() * CLAIM_SIZE + CLAIM_SIZE / 2;
+        int y = world.getHighestBlockYAt(cx, cz);
+        return new Location(world, cx + 0.5, y + 1, cz + 0.5);
+    }
+
+    /** Cherche un claim adjacent (N/S/E/O) appartenant au royaume attaquant. */
+    public static Claim findAdjacentAttackerClaim(War w, Claim attacked) {
+        String attackerKingdomName = w.getAttackerKingdom().getName();
+        int gx = attacked.getGridX();
+        int gz = attacked.getGridZ();
+
+        int[][] dirs = {{1,0}, {-1,0}, {0,1}, {0,-1}};
+        for (int[] d : dirs) {
+            int ngx = gx + d[0], ngz = gz + d[1];
+            int blockX = ngx * CLAIM_SIZE + CLAIM_SIZE / 2;
+            int blockZ = ngz * CLAIM_SIZE + CLAIM_SIZE / 2;
+            Claim neighbor = ClaimManager.getClaimByCoordinates(blockX, blockZ);
+            if (neighbor != null && attackerKingdomName.equalsIgnoreCase(neighbor.getKingdomName())) {
+                return neighbor;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Point de ralliement à 'offset' blocs à l’intérieur du claim 'staging' (attaquant), proche de la frontière avec 'attacked'.
+     */
+    public static Location getStagingPointNearBorder(Claim staging, Claim attacked, int offset) {
+        int sx = staging.getGridX(), sz = staging.getGridZ();
+        int ax = attacked.getGridX(), az = attacked.getGridZ();
+
+        if (sx == ax && sz == az + 1) {
+            // staging au S du attacked → bord nord de staging
+            int x = sx * CLAIM_SIZE + CLAIM_SIZE / 2;
+            int z = sz * CLAIM_SIZE + offset;
+            int y = world.getHighestBlockYAt(x, z);
+            return new Location(world, x + 0.5, y + 1, z + 0.5);
+        } else if (sx == ax && sz == az - 1) {
+            // staging au N du attacked → bord sud de staging
+            int x = sx * CLAIM_SIZE + CLAIM_SIZE / 2;
+            int z = (sz + 1) * CLAIM_SIZE - 1 - offset;
+            int y = world.getHighestBlockYAt(x, z);
+            return new Location(world, x + 0.5, y + 1, z + 0.5);
+        } else if (sz == az && sx == ax + 1) {
+            // staging à l'E du attacked → bord ouest de staging
+            int x = sx * CLAIM_SIZE + offset;
+            int z = sz * CLAIM_SIZE + CLAIM_SIZE / 2;
+            int y = world.getHighestBlockYAt(x, z);
+            return new Location(world, x + 0.5, y + 1, z + 0.5);
+        } else if (sz == az && sx == ax - 1) {
+            // staging à l'O du attacked → bord est de staging
+            int x = (sx + 1) * CLAIM_SIZE - 1 - offset;
+            int z = sz * CLAIM_SIZE + CLAIM_SIZE / 2;
+            int y = world.getHighestBlockYAt(x, z);
+            return new Location(world, x + 0.5, y + 1, z + 0.5);
+        }
+
+        // Non adjacent → centre du staging
+        return getClaimCenter(staging);
     }
 }
