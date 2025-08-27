@@ -1,16 +1,16 @@
 package com.kingdomspvp.kingdoms.model;
 
-import com.massivecraft.factions.FPlayer;
-import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.Faction;
 import com.massivecraft.factions.Factions;
 import org.bukkit.ChatColor;
-import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+// Ajoute en haut
+import org.bukkit.Location;
 
 public class Kingdom {
     private String name;
@@ -33,11 +33,18 @@ public class Kingdom {
         return color;
     }
 
+    // Ajoute dans la classe Kingdom
+    private Location spawnPoint;
+
     public List<Faction> getFactions() {
         return factionIds.stream()
                 .map(id -> Factions.getInstance().getFactionById(id))
                 .collect(Collectors.toList());
     }
+
+    public Location getSpawnPoint() { return spawnPoint; }
+
+    public void setSpawnPoint(Location loc) { this.spawnPoint = loc; }
 
     private void createDefaultFaction() {
         String factionName = "Paysans_" + name;
