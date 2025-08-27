@@ -7,7 +7,7 @@ import org.bukkit.event.EventHandler;
 
 import java.util.Objects;
 
-public class FactionDisbandListeners {
+public class FactionDisbandListener {
     @EventHandler
     public void onFactionDisband(FactionDisbandEvent event) {
         // Récupère le nom de la faction qui est sur le point d'être supprimée
