@@ -185,4 +185,21 @@ public class ClaimManager {
         }
         return result;
     }
+
+    public static void transferClaimToKingdom(Claim claim, String kingdomName, String factionTag) {
+        if (claim == null || kingdomName == null) return;
+        claim.setKingdomName(kingdomName);
+        if (factionTag != null && !factionTag.isEmpty()) {
+            claim.setFactionName(factionTag);
+        }
+        addClaim(claim); // addClaim() force la sauvegarde
+    }
+
+    /**
+     * Surcharge pratique si tu veux juste passer le royaume (faction tag auto: "Paysans_<royaume>")
+     */
+    public static void transferClaimToKingdom(Claim claim, String kingdomName) {
+        String defaultFactionTag = "Paysans_" + kingdomName;
+        transferClaimToKingdom(claim, kingdomName, defaultFactionTag);
+    }
 }

@@ -27,26 +27,45 @@ public final class ClaimVisualization {
 
     // === API publique appelée par WarManager ===
 
-    /** Au début de la guerre (avant 1er claim attaqué) : afficher TOUS les claims pour tous les joueurs. */
-    public static void startWarOutlines(War war) {
-        stopWarOutlines(war); // évite doublons
+// utils/ClaimVisualization.java
 
-        int taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(
+    private static java.util.List<Claim> getAttackableClaims(War war) {
+        String def = war.getDefenderKingdom().getName();
+        String atk = war.getAttackerKingdom().getName();
+        return ClaimManager.getDefenderClaimsAdjacentToAttacker(def, atk);
+    }
+
+    private static void renderAttackableClaimsOnceForWorld(org.bukkit.World world, War war) {
+        org.bukkit.Color color = chatToColor(war.getDefenderKingdom().getColor());
+        String def = war.getDefenderKingdom().getName();
+
+        for (Claim c : getAttackableClaims(war)) {
+            // Sécurité supplémentaire : ne dessine que si le claim appartient bien au DEF
+            if (!def.equalsIgnoreCase(c.getKingdomName())) continue;
+            drawClaimOutlineForWorld(world, c.getGridX(), c.getGridZ(), color);
+        }
+    }
+
+    public static void startWarOutlines(War war) {
+        stopWarOutlines(war); // coupe tout ancien rendu (y compris "claim-only")
+
+        int taskId = org.bukkit.Bukkit.getScheduler().scheduleSyncRepeatingTask(
                 getPlugin(),
                 () -> {
-                    // Mondes avec des joueurs connectés (on évite d'envoyer dans des mondes vides)
-                    Set<World> worlds = Bukkit.getOnlinePlayers()
-                            .stream().map(Player::getWorld).collect(Collectors.toSet());
+                    java.util.Set<org.bukkit.World> worlds = org.bukkit.Bukkit.getOnlinePlayers()
+                            .stream().map(org.bukkit.entity.Player::getWorld)
+                            .collect(java.util.stream.Collectors.toSet());
                     if (worlds.isEmpty()) return;
 
-                    for (World w : worlds) {
-                        renderAllClaimsOnceForWorld(w);
+                    for (org.bukkit.World w : worlds) {
+                        renderAttackableClaimsOnceForWorld(w, war); // uniquement la frontière attaquable
                     }
                 },
                 0L, PERIOD_TICKS
         );
         WAR_TASKS.put(war.getId(), taskId);
     }
+
 
     /** Après 1er claim attaqué : n’afficher que ce claim (pour tous les joueurs). */
     public static void switchToAttackedClaimOnly(War war, Claim attackedClaim) {

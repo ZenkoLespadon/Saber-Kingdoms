@@ -546,4 +546,63 @@ public class WarManager {
         // Non adjacent → centre du staging
         return getClaimCenter(staging);
     }
+
+    // WarManager.java
+    public static void enableDetectionForNextRound(War w) {
+        // réutilise la même mécanique que le 1er round
+        ACTIVE_DETECTION_WARS.put(w.getId(), w);
+        ensureClaimListenerRegistered();
+
+        long ticks = DETECTION_WINDOW.toSeconds() * 20L;
+        int taskId = org.bukkit.Bukkit.getScheduler().scheduleSyncDelayedTask(
+                FactionsPlugin.getInstance(),
+                () -> disableDetectionFor(w.getId()),
+                ticks
+        );
+        detectionTimeoutTasks.put(w.getId(), taskId);
+
+        // Message d’instruction aux attaquants (facultatif)
+        sendToAttackers(w, buildWaitForAttackMessage());
+    }
+
+    // Java
+    public static void prepareNextRound(War w, boolean nextRoundWillStart) {
+        if (w == null) return;
+
+        // A) Stop tout affichage restant
+        ClaimVisualization.stopWarOutlines(w);
+
+        // B) Reset la phase de combat
+        w.resetRound();
+
+        // C) Recalcule la frontière attaquable côté DEF
+        java.util.List<Claim> attackables = ClaimManager.getDefenderClaimsAdjacentToAttacker(
+                w.getDefenderKingdom().getName(),
+                w.getAttackerKingdom().getName()
+        );
+        w.setAttackableDefenderClaims(attackables);
+
+        // D) Persiste
+        warsJSON.addWar(w);
+
+        if (nextRoundWillStart) {
+            // E) Relance l’affichage: uniquement les claims attaquables
+            ClaimVisualization.startWarOutlines(w);
+
+            // F) Réarmer la détection “premier claim attaqué”
+            ACTIVE_DETECTION_WARS.put(w.getId(), w);
+            ensureClaimListenerRegistered();
+            long ticks = DETECTION_WINDOW.toSeconds() * 20L;
+            int taskId = org.bukkit.Bukkit.getScheduler().scheduleSyncDelayedTask(
+                    FactionsPlugin.getInstance(),
+                    () -> disableDetectionFor(w.getId()),
+                    ticks
+            );
+            detectionTimeoutTasks.put(w.getId(), taskId);
+
+            // G) Feedback
+            sendToAttackers(w, buildWaitForAttackMessage());
+        }
+    }
+
 }

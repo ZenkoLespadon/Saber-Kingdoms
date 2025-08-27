@@ -9,7 +9,7 @@ public class War {
     private final Kingdom defenderKingdom;
     private final LocalDateTime startTime;
     private WarStatus status;
-    // com.kingdomspvp.kingdoms.model.War
+
     private boolean combatStarted = false;
 
 
@@ -112,4 +112,13 @@ public class War {
     public boolean isAttackable(int gridX, int gridZ) {
         return attackableDefenderClaims.contains(gridX + "," + gridZ);
     }
+
+    // model/War.java
+    public void resetRound() {
+        // remet la guerre en attente d'une nouvelle attaque
+        this.combatStarted = false;          // ou setCombatStarted(false) si tu as un setter
+        this.attackedGridX = null;           // si champs Integer
+        this.attackedGridZ = null;
+    }
+
 }
