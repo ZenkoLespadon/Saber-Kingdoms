@@ -38,6 +38,14 @@ import java.util.*;
  */
 public class WarManager {
 
+    // TODO : Avant la pré-alpha
+    // TODO : Modifier les messages pour qu'ils prennent les couleurs des royaumes
+    // TODO : Remettre toutes les constantes aux bonnes valeurs
+    // TODO : Mettre un plugin PVP 1.8 (Anti-cooldown)
+    // TODO : Télécharger ngrok et faire un tunnel vers le serveur local
+    // TODO : Mettre une map normal
+    // TODO : Set les spawn des 2 royaumes dans des endroits fermés
+
     public static final Duration MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
     public static final Duration MAX_TIME_BEFORE_WAR = Duration.ofMinutes(20);
 
@@ -207,7 +215,23 @@ public class WarManager {
         warsJSON.addWar(w);
 
         ClaimVisualization.startWarOutlines(w);
+
+        ACTIVE_DETECTION_WARS.put(w.getId(), w);
+        ensureClaimListenerRegistered();
+
+        WarRuntime.onDetectionWindowStarted(w, DETECTION_WINDOW);
+
+        long ticks = DETECTION_WINDOW.toSeconds() * 20L;
+        int taskId = Bukkit.getScheduler().scheduleSyncDelayedTask(
+                FactionsPlugin.getInstance(),
+                () -> disableDetectionFor(w.getId()),
+                ticks
+        );
+        detectionTimeoutTasks.put(w.getId(), taskId);
+
+
         enableDetectionFor(w);
+
         sendToAttackers(w, buildWaitForAttackMessage());
 
         // Un seul envoi de l'événement
@@ -370,14 +394,11 @@ public class WarManager {
         return TextComponent.fromLegacyText(ChatColor.GOLD + "Attaquez un claim pour commencer la guerre");
     }
 
-    /** Bouton “rejoindre maintenant” → TP vers la guerre (commande cachée _tp_to_war). */
     public static BaseComponent[] buildTpToWarNowMessage(String warId) {
-        TextComponent root = new TextComponent(ChatColor.GOLD + "La guerre commence, ");
-        TextComponent btn  = new TextComponent(ChatColor.GREEN + "[cliquez ici pour vous téléporter à la guerre]");
+        TextComponent btn = new TextComponent(ChatColor.GREEN + "[Cliquez ici pour vous téléporter à la guerre]");
         btn.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/k _tp_to_war " + warId));
         btn.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Rejoindre la guerre " + warId)));
-        root.addExtra(btn);
-        return new BaseComponent[]{ root };
+        return new BaseComponent[]{ btn };
     }
 
     public static void sendToAttackers(War w, BaseComponent[] comps) {
@@ -437,7 +458,6 @@ public class WarManager {
         detectionTimeoutTasks.put(w.getId(), taskId);
     }
 
-    /** À appeler quand un claim est attaqué OU quand la fenêtre expire. */
     private static void disableDetectionFor(String warId) {
         ACTIVE_DETECTION_WARS.remove(warId);
 
@@ -446,7 +466,14 @@ public class WarManager {
             Bukkit.getScheduler().cancelTask(tid);
         }
         unregisterClaimListenerIfIdle();
+
+        // ➜ Notifie le runtime d’arrêter l’affichage "détection"
+        War w = getWar(warId);
+        if (w != null) {
+            WarRuntime.onDetectionWindowEnded(w);
+        }
     }
+
 
     /** Appelé par le listener quand le premier claim défenseur est engagé par un attaquant. */
     public static void handleFirstClaimAttacked(War w, Claim to) {
@@ -456,8 +483,10 @@ public class WarManager {
         w.markCombatStarted(to.getGridX(), to.getGridZ());
         warsJSON.addWar(w);
         disableDetectionFor(w.getId());
+        WarRuntime.onDetectionWindowEnded(w);
 
-        // ➜ Notifie et propose le TP immédiat
+        sendWarStartMessage(w);
+
         sendToRegisteredPlayers(w, buildTpToWarNowMessage(w.getId()));
         ClaimVisualization.switchToAttackedClaimOnly(w, to);
 
@@ -553,6 +582,8 @@ public class WarManager {
         ACTIVE_DETECTION_WARS.put(w.getId(), w);
         ensureClaimListenerRegistered();
 
+        WarRuntime.onDetectionWindowStarted(w, DETECTION_WINDOW);
+
         long ticks = DETECTION_WINDOW.toSeconds() * 20L;
         int taskId = org.bukkit.Bukkit.getScheduler().scheduleSyncDelayedTask(
                 FactionsPlugin.getInstance(),
@@ -605,4 +636,10 @@ public class WarManager {
         }
     }
 
+    // Java
+    public static void sendWarStartMessage(War war) {
+        String defName = war.getDefenderKingdom().getName();
+        String msg = org.bukkit.ChatColor.GOLD + "La guerre contre le Royaume " + org.bukkit.ChatColor.RED + defName + org.bukkit.ChatColor.GOLD + " commence !";
+        sendToRegisteredPlayers(war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(msg));
+    }
 }
