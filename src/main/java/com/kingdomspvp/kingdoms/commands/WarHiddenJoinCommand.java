@@ -37,7 +37,7 @@ public class WarHiddenJoinCommand extends KingdomCommand {
                 if (fp != null && fp.getFaction() != null && !fp.getFaction().isWilderness()) {
                     Kingdom playerKingdom = KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
                     if (playerKingdom != null && playerKingdom.equals(war.getAttackerKingdom())) {
-                        context.player.spigot().sendMessage(WarManager.buildWaitForAttackMessage());
+                        context.player.spigot().sendMessage(WarManager.buildWaitForAttackMessage(war.getDefenderKingdom()));
                     }
                 }
             }

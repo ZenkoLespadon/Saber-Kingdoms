@@ -7,6 +7,7 @@ import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.utils.Callback;
+import com.kingdomspvp.kingdoms.utils.ChatUtil;
 import com.kingdomspvp.kingdoms.utils.ClaimVisualization;
 import com.kingdomspvp.kingdoms.utils.WarsJSON;
 import com.massivecraft.factions.FPlayer;
@@ -176,7 +177,7 @@ public class WarManager {
         long promptTicks = promptMillis / 50L;
         Bukkit.getScheduler().runTaskLater(
                 FactionsPlugin.getInstance(),
-                () -> sendJoinPrompt(w, "§6La guerre va commencer bientôt ! "),
+                () -> sendJoinPrompt(w, ChatColor.GOLD + "La guerre contre le royaume " + ChatUtil.kingdomName(w.getDefenderKingdom()) + " commence dans 30 secondes ! "),
                 promptTicks
         );
     }
@@ -232,7 +233,7 @@ public class WarManager {
 
         enableDetectionFor(w);
 
-        sendToAttackers(w, buildWaitForAttackMessage());
+        sendToAttackers(w, buildWaitForAttackMessage(w.getDefenderKingdom()));
 
         // Un seul envoi de l'événement
         Bukkit.getPluginManager().callEvent(new WarStartEvent(w));
@@ -365,17 +366,18 @@ public class WarManager {
 
             if (pk.equals(attacker)) {
                 p.sendMessage(
-                        org.bukkit.ChatColor.GREEN + "⚔ Votre royaume attaque le royaume " + defender.getColor() + defender.getName()
+                        org.bukkit.ChatColor.GREEN + "⚔ Votre royaume attaque le royaume " + ChatUtil.kingdomName(defender)
                                 + org.bukkit.ChatColor.GREEN + " le " + org.bukkit.ChatColor.AQUA + dateStr
                                 + org.bukkit.ChatColor.GREEN + " à " + org.bukkit.ChatColor.AQUA + timeStr + org.bukkit.ChatColor.GREEN + "."
                 );
             } else if (pk.equals(defender)) {
                 p.sendMessage(
-                        org.bukkit.ChatColor.RED + "⚠ Votre royaume est attaqué par le royaume " + attacker.getColor() + attacker.getName()
+                        org.bukkit.ChatColor.RED + "⚠ Votre royaume est attaqué par le royaume " + ChatUtil.kingdomName(attacker)
                                 + org.bukkit.ChatColor.RED + " le " + org.bukkit.ChatColor.AQUA + dateStr
                                 + org.bukkit.ChatColor.RED + " à " + org.bukkit.ChatColor.AQUA + timeStr + org.bukkit.ChatColor.RED + "."
                 );
             }
+
         }
     }
 
@@ -390,8 +392,9 @@ public class WarManager {
         }
     }
 
-    public static BaseComponent[] buildWaitForAttackMessage() {
-        return TextComponent.fromLegacyText(ChatColor.GOLD + "Attaquez un claim pour commencer la guerre");
+    public static BaseComponent[] buildWaitForAttackMessage(Kingdom defender) {
+        String defName = ChatUtil.kingdomName(defender);
+        return TextComponent.fromLegacyText(ChatColor.GOLD + "Attaquez un claim du royaume " + defName + ChatColor.GOLD + " pour démarrer la guerre !");
     }
 
     public static BaseComponent[] buildTpToWarNowMessage(String warId) {
@@ -600,7 +603,7 @@ public class WarManager {
         detectionTimeoutTasks.put(w.getId(), taskId);
 
         // Message d’instruction aux attaquants (facultatif)
-        sendToAttackers(w, buildWaitForAttackMessage());
+        sendToAttackers(w, buildWaitForAttackMessage(w.getDefenderKingdom()));
     }
 
     // Java
@@ -642,14 +645,15 @@ public class WarManager {
             detectionTimeoutTasks.put(w.getId(), taskId);
 
             // G) Feedback
-            sendToAttackers(w, buildWaitForAttackMessage());
+            sendToAttackers(w, buildWaitForAttackMessage(w.getDefenderKingdom()));
         }
     }
 
     // Java
     public static void sendWarStartMessage(War war) {
-        String defName = war.getDefenderKingdom().getName();
-        String msg = org.bukkit.ChatColor.GOLD + "La guerre contre le Royaume " + org.bukkit.ChatColor.RED + defName + org.bukkit.ChatColor.GOLD + " commence !";
+        String defName = ChatUtil.kingdomName(war.getDefenderKingdom());
+        String msg = org.bukkit.ChatColor.GOLD + "La guerre contre le Royaume " + defName + org.bukkit.ChatColor.GOLD + " commence !";
         sendToRegisteredPlayers(war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(msg));
     }
+
 }
