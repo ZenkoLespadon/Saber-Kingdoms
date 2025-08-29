@@ -467,12 +467,19 @@ public class WarManager {
         }
         unregisterClaimListenerIfIdle();
 
-        // ➜ Notifie le runtime d’arrêter l’affichage "détection"
         War w = getWar(warId);
         if (w != null) {
+            // Stoppe l'affichage "détection" côté runtime (idempotent)
             WarRuntime.onDetectionWindowEnded(w);
+
+            // Aucune attaque n'a démarré avant la fin de la fenêtre → victoire DEF
+            if (!w.hasCombatStarted() && w.getStatus() == WarStatus.INPROGRESS) {
+                WarRuntime.defendersAutoWinNoAttack(w);
+            }
         }
     }
+
+
 
 
     /** Appelé par le listener quand le premier claim défenseur est engagé par un attaquant. */
@@ -622,6 +629,9 @@ public class WarManager {
 
             // F) Réarmer la détection “premier claim attaqué”
             ACTIVE_DETECTION_WARS.put(w.getId(), w);
+
+            WarRuntime.onDetectionWindowStarted(w, DETECTION_WINDOW);
+
             ensureClaimListenerRegistered();
             long ticks = DETECTION_WINDOW.toSeconds() * 20L;
             int taskId = org.bukkit.Bukkit.getScheduler().scheduleSyncDelayedTask(
