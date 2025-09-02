@@ -26,8 +26,6 @@ public class WarClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onMove(PlayerMoveEvent e) {
-        // Log dans la console minecraft pour vérifier si la méthode est appelée
-        System.out.println("PlayerMoveEvent détecté pour " + e.getPlayer().getName());
 
         // Ne traiter que si changement de cellule (CLAIM_SIZE = 128 -> >> 7)
         if ((e.getFrom().getBlockX() >> 7) == (e.getTo().getBlockX() >> 7) &&

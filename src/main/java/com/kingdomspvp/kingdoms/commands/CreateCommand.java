@@ -9,49 +9,54 @@ public class CreateCommand extends KingdomCommand {
     public CreateCommand() {
         this.aliases.add("create");
         this.requiredArgs.add("name");
+        this.requiredArgs.add("color");
         this.setHelpShort("Create a new Kingdom.");
     }
 
+    // Java - src/main/java/com/kingdomspvp/kingdoms/commands/CreateCommand.java
     @Override
     public void perform(KingdomCommandContext context) {
-        // Vérifier si l'expéditeur est un joueur
         if (context.player == null) {
             context.msg(ChatColor.RED + "This command can only be executed by a player.");
             return;
         }
-
-        // Vérifier la permission
         if (!context.player.hasPermission("kingdoms.create")) {
             context.msg(ChatColor.RED + "You don't have permission to create a kingdom.");
             return;
         }
+        if (context.args.size() < 2) {
+            context.msg(ChatColor.RED + "Usage: /k create <name> <color>");
+            return;
+        }
 
-        // Récupérer le nom du royaume
         String kingdomName = context.args.get(0);
+        String colorName = context.args.get(1).toUpperCase();
 
-        // Vérifier si le royaume existe déjà
         if (KingdomsManager.getKingdomByName(kingdomName) != null) {
             context.msg(ChatColor.RED + "A kingdom with this name already exists.");
             return;
         }
 
-        // Créer un nouveau royaume
-        Kingdom kingdom = new Kingdom(kingdomName, ChatColor.GREEN); // Vous pouvez choisir une autre couleur ou la passer en argument
-        KingdomsManager.addKingdom(kingdom);
-
-        if (kingdom != null) {
-            context.player.sendMessage(ChatColor.GRAY + "Vous avez rejoint le royaume : " + kingdom.getColor() + kingdom.getName());
-            KingdomsManager.addPlayerToDefaultFactionOfKingdom(context.player, kingdom);
-        } else {
-            context.player.sendMessage(ChatColor.GRAY + "Le royaume spécifié n'existe pas.");
+        ChatColor color;
+        try {
+            color = ChatColor.valueOf(colorName);
+        } catch (IllegalArgumentException e) {
+            context.msg(ChatColor.RED + "Couleur invalide. Exemples : green, red, blue, gold, yellow...");
+            return;
         }
 
-        // Envoyer un message de confirmation
-        context.msg(ChatColor.GREEN + "Kingdom " + kingdomName + " has been successfully created.");
+        Kingdom kingdom = new Kingdom(kingdomName, color);
+        KingdomsManager.addKingdom(kingdom);
+
+        context.player.sendMessage(ChatColor.GRAY + "Vous avez rejoint le royaume : " + kingdom.getColor() + kingdom.getName());
+        KingdomsManager.addPlayerToDefaultFactionOfKingdom(context.player, kingdom);
+
+        context.msg(ChatColor.GREEN + "Kingdom " + kingdomName + " a été créé avec la couleur " + color + color.name().toLowerCase() + ChatColor.GREEN + ".");
     }
 
     @Override
     public String getUsageTranslation() {
-        return "/k create <name>";
+        return "/k create <name> <color>";
     }
+
 }

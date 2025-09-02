@@ -12,6 +12,8 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 
 import java.util.UUID;
 
+// TODO : Fusionner la branche war avec master
+
 public class WarDeathListener implements Listener {
     // Java
     @EventHandler
@@ -29,7 +31,7 @@ public class WarDeathListener implements Listener {
         Bukkit.getScheduler().runTaskLater(
                 com.massivecraft.factions.FactionsPlugin.getInstance(),
                 () -> sendTpToWarMessage(playerId, war),
-                20L * 5 // 30 secondes
+                20L * 15 // 30 secondes
         );
     }
 
