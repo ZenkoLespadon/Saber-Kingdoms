@@ -39,13 +39,24 @@ import java.util.*;
  */
 public class WarManager {
 
-    // TODO : Avant la pré-alpha
-    // TODO : Modifier les messages pour qu'ils prennent les couleurs des royaumes
-    // TODO : Remettre toutes les constantes aux bonnes valeurs
-    // TODO : Mettre un plugin PVP 1.8 (Anti-cooldown)
-    // TODO : Télécharger ngrok et faire un tunnel vers le serveur local
-    // TODO : Mettre une map normal
-    // TODO : Set les spawn des 2 royaumes dans des endroits fermés
+/*
+mettre la couleur dans le tab et au dessus de leur tete (pseudo)
+et au dessus de la tête des joueurs
+
+!!!!!! Quand la guerre commence mettre tous les inscrits dans le tchat
+
+!!!!!! les attaquants doivent être plus avantagés
+!!!!!! mettre la pomme cheat 1.20
+
+
+!!!!!! des messages dans le tchat pendant la guerre pour dire quand est-ce qu'on rentre et qu'on sort
+
+faire un pnj qui ouvre une interface pour rejoindre un royaume
+commande pour changer les joueurs de royaume
+faire une interface pour les déclarations de guerre avec les heures/jours
+
+c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules (vérifier si c'est tous les packs ou juste le sien)
+ */
 
     public static final Duration MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
     public static final Duration MAX_TIME_BEFORE_WAR = Duration.ofMinutes(20);

@@ -255,28 +255,6 @@ public final class WarRuntime {
             war.setStatus(WarStatus.ENDED);
             WarManager.getWars().put(war.getId(), war);
             stop(false);
-
-            // Java
-            for (UUID id : war.getAttackerPlayers()) {
-                Player p = Bukkit.getPlayer(id);
-                if (p != null && p.isOnline()) {
-                    for (Iterator<KeyedBossBar> it = Bukkit.getBossBars(); it.hasNext(); ) {
-                        BossBar bar = it.next();
-                        bar.removePlayer(p);
-                    }
-                    p.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
-                }
-            }
-            for (UUID id : war.getDefenderPlayers()) {
-                Player p = Bukkit.getPlayer(id);
-                if (p != null && p.isOnline()) {
-                    for (Iterator<KeyedBossBar> it = Bukkit.getBossBars(); it.hasNext(); ) {
-                        BossBar bar = it.next();
-                        bar.removePlayer(p);
-                    }
-                    p.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
-                }
-            }
         }
 
 
@@ -486,20 +464,41 @@ public final class WarRuntime {
         private final Line objective;
 
         static BossAndBoard attachTo(Player p, int seconds, War war, double targetPoints) {
+            // BossBar (comme avant)
             org.bukkit.boss.BossBar bar = Bukkit.createBossBar(
                     makeBossTitle(war, 0.0, targetPoints),
-                    BarColor.WHITE, // neutre; se colorie ensuite
+                    BarColor.WHITE,
                     BarStyle.SOLID
             );
             bar.setProgress(0.0);
             bar.addPlayer(p);
             bar.setVisible(true);
 
-            org.bukkit.scoreboard.Scoreboard sb = Bukkit.getScoreboardManager().getNewScoreboard();
+            // *** IMPORTANT *** : on n'écrase PAS le scoreboard du joueur
+            org.bukkit.scoreboard.Scoreboard sb = p.getScoreboard();
+            if (sb == null) sb = Bukkit.getScoreboardManager().getMainScoreboard();
+
+            // Objectif SIDEBAR dédié à ce joueur pour éviter tout conflit global
+            String objName = "sbwar_" + p.getUniqueId().toString().substring(0, 8);
+            org.bukkit.scoreboard.Objective old = sb.getObjective(objName);
+            if (old != null) old.unregister();
+
             String title = makeSidebarTitle(war);
-            org.bukkit.scoreboard.Objective obj = sb.registerNewObjective("sbwar", "dummy", title);
+            org.bukkit.scoreboard.Objective obj = sb.registerNewObjective(objName, "dummy", title);
             obj.setDisplaySlot(DisplaySlot.SIDEBAR);
 
+            // *** PRÉSERVATION HEALTHBAR ***
+            // Si aucun objectif BELOW_NAME n'est affiché, on en crée un basé sur le critère "health".
+            // Si HealthBar-Reloaded gère déjà BELOW_NAME, on NE TOUCHE A RIEN.
+            if (sb.getObjective(DisplaySlot.BELOW_NAME) == null) {
+                org.bukkit.scoreboard.Objective hb = sb.getObjective("hb_health");
+                if (hb == null) {
+                    hb = sb.registerNewObjective("hb_health", "health", org.bukkit.ChatColor.RED + "❤");
+                }
+                hb.setDisplaySlot(DisplaySlot.BELOW_NAME);
+            }
+
+            // Lignes (teams) — noms préfixés "war_" pour pouvoir les nettoyer sans toucher aux autres plugins
             addStaticLine(sb, obj, 10, org.bukkit.ChatColor.DARK_GRAY + "────────────");
             LineTimer timer = new LineTimer(sb, obj, 9, "⏳ Temps", formatMMSS(seconds));
             addStaticLine(sb, obj, 8, "");
@@ -511,9 +510,10 @@ public final class WarRuntime {
             Line objective = new Line(sb, obj, 2, "Objectif", "100%");
             addStaticLine(sb, obj, 1, org.bukkit.ChatColor.GRAY + "kingdoms.example");
 
-            p.setScoreboard(sb);
+            // *** NE PAS faire p.setScoreboard(sb); ***
             return new BossAndBoard(p, war, bar, sb, obj, timer, allies, enemies, kda, points, objective);
         }
+
 
         private BossAndBoard(Player p, War war, org.bukkit.boss.BossBar bar,
                              org.bukkit.scoreboard.Scoreboard sb, org.bukkit.scoreboard.Objective obj,
@@ -550,17 +550,40 @@ public final class WarRuntime {
 
         void destroy() {
             try { bar.removeAll(); } catch (Throwable ignored) {}
-            try { p.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard()); } catch (Throwable ignored) {}
+
+            try {
+                // Supprime notre objectif SIDEBAR dédié
+                if (obj != null) {
+                    org.bukkit.scoreboard.Objective o = sb.getObjective(obj.getName());
+                    if (o != null) o.unregister();
+                }
+
+                // Supprime UNIQUEMENT nos teams (préfixes "war_static_" et "war_line_")
+                for (org.bukkit.scoreboard.Team t : new java.util.ArrayList<>(sb.getTeams())) {
+                    String n = t.getName();
+                    if (n != null && (n.startsWith("war_static_") || n.startsWith("war_line_"))) {
+                        try { t.unregister(); } catch (Throwable ignored2) {}
+                    }
+                }
+            } catch (Throwable ignored) {}
+
+            // *** NE PAS remettre le main scoreboard ici ***
+            // (On laisse le scoreboard en place pour ne pas casser HealthBar-Reloaded ou d'autres plugins.)
         }
+
 
         private static void addStaticLine(org.bukkit.scoreboard.Scoreboard sb,
                                           org.bukkit.scoreboard.Objective obj,
                                           int score, String text) {
             String entry = text + org.bukkit.ChatColor.values()[Math.max(0, Math.min(org.bukkit.ChatColor.values().length - 1, score))];
-            org.bukkit.scoreboard.Team team = sb.registerNewTeam("static_" + score);
+            String teamName = "war_static_" + score;
+            org.bukkit.scoreboard.Team team = sb.getTeam(teamName);
+            if (team != null) team.unregister();
+            team = sb.registerNewTeam(teamName);
             team.addEntry(entry);
             obj.getScore(entry).setScore(score);
         }
+
 
         private static String formatMMSS(int total) {
             int m = total / 60, s = total % 60; return String.format("%d:%02d", m, s);
@@ -569,7 +592,10 @@ public final class WarRuntime {
         private static class Line {
             private final org.bukkit.scoreboard.Team team; private final String entry;
             Line(org.bukkit.scoreboard.Scoreboard sb, org.bukkit.scoreboard.Objective obj, int score, String label, String initial) {
-                this.team = sb.registerNewTeam("line_" + score);
+                String teamName = "war_line_" + score;
+                org.bukkit.scoreboard.Team t = sb.getTeam(teamName);
+                if (t != null) t.unregister();
+                this.team = sb.registerNewTeam(teamName);
                 this.team.setPrefix(org.bukkit.ChatColor.YELLOW + label + org.bukkit.ChatColor.GRAY + ": ");
                 this.team.setSuffix(org.bukkit.ChatColor.WHITE + initial);
                 this.entry = org.bukkit.ChatColor.values()[score].toString();
@@ -577,6 +603,7 @@ public final class WarRuntime {
             }
             void setValue(String v) { this.team.setSuffix(org.bukkit.ChatColor.WHITE + v); }
         }
+
         private static class LineTimer extends Line {
             LineTimer(org.bukkit.scoreboard.Scoreboard sb, org.bukkit.scoreboard.Objective obj, int score, String label, String initial) {
                 super(sb, obj, score, label, initial);
