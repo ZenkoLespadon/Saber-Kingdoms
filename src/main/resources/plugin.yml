@@ -1,9 +1,9 @@
-name: Factions
-prefix: SaberFactions
+name: Kingdoms
+prefix: SaberKingdoms
 version: ${project.version}
-api-version: 1.13
+api-version: 1.21.1
 main: com.massivecraft.factions.FactionsPlugin
-authors: [Olof Larsson, Brett Flannigan, drtshock, ProSavage, DroppingAnvil, Driftay, SaberDev, Callum, Atilt]
+authors: [Olof Larsson, Brett Flannigan, drtshock, ProSavage, DroppingAnvil, Driftay, SaberDev, Callum, Atilt, ZenkoLespadon]
 depend: [Vault]
 softdepend: [CoreProtect, PlayerVaults, PlaceholderAPI, MVdWPlaceholderAPI, PermissionsEx, Permissions, Essentials, EssentialsChat, HeroChat, iChat, LocalAreaChat, LWC, nChat, ChatManager, CAPI, AuthMe, Vault, Spout, WorldEdit, WorldGuard, AuthDB, CaptureThePoints, CombatTag, dynmap, WildStacker, Multiverse-Core, MultiWorld]
 commands:
