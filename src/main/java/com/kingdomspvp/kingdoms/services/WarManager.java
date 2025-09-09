@@ -49,13 +49,13 @@ et au dessus de la tête des joueurs
 !!!!!! mettre la pomme cheat 1.20
 
 
-!!!!!! des messages dans le tchat pendant la guerre pour dire quand est-ce qu'on rentre et qu'on sort
-
 faire un pnj qui ouvre une interface pour rejoindre un royaume
 commande pour changer les joueurs de royaume
 faire une interface pour les déclarations de guerre avec les heures/jours
 
 c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules (vérifier si c'est tous les packs ou juste le sien)
+
+Mettre [WAR] devant tous les messages liées aux guerres pour éviter les confusions
  */
 
     public static final Duration MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
@@ -307,7 +307,25 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         boolean added = war.addParticipant(player.getUniqueId(), k);
         if (added) {
             warsJSON.addWar(war);
+
+            // --- Annonce aux participants de la guerre ---
+            int attackers = war.getAttackerPlayers().size();
+            int defenders = war.getDefenderPlayers().size();
+            boolean isAttacker = k.equals(war.getAttackerKingdom());
+
+            String who = isAttacker ? "Un attaquant" : "Un défenseur";
+            org.bukkit.ChatColor atkColor = war.getAttackerKingdom().getColor();
+            org.bukkit.ChatColor defColor = war.getDefenderKingdom().getColor();
+
+            String legacyMsg =
+                    org.bukkit.ChatColor.GOLD + who + " a rejoint la guerre, "
+                            + atkColor + attackers + org.bukkit.ChatColor.GOLD + " attaquants contre "
+                            + defColor + defenders + org.bukkit.ChatColor.GOLD + " défenseurs.";
+
+            sendToRegisteredPlayers(war,
+                    net.md_5.bungee.api.chat.TextComponent.fromLegacyText(legacyMsg));
         }
+
         return added;
     }
 
@@ -450,8 +468,9 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
     }
 
     private static void unregisterClaimListenerIfIdle() {
-        if (claimListenerRegistered && ACTIVE_DETECTION_WARS.isEmpty()) {
-            // Désinscription ciblée du listener de ce plugin
+        boolean anyInProgress = warsJSON.getAllWars()
+                .values().stream().anyMatch(w -> w.getStatus() == WarStatus.INPROGRESS);
+        if (claimListenerRegistered && ACTIVE_DETECTION_WARS.isEmpty() && !anyInProgress) {
             HandlerList.unregisterAll(claimListener);
             claimListenerRegistered = false;
             claimListener = null;
