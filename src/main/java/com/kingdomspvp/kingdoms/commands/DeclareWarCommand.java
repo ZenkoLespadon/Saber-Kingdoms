@@ -9,9 +9,7 @@ import com.kingdomspvp.kingdoms.services.WarManager;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.Faction;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.entity.Player;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,7 +17,6 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 
 public class DeclareWarCommand extends KingdomCommand {
 
@@ -31,7 +28,6 @@ public class DeclareWarCommand extends KingdomCommand {
 
     @Override
     public void perform(KingdomCommandContext context) {
-        // 1) Vérifier que c'est un joueur.
         if (context.player == null) {
             context.msg(ChatColor.RED + "Cette commande ne peut être exécutée que par un joueur.");
             return;
@@ -39,14 +35,11 @@ public class DeclareWarCommand extends KingdomCommand {
 
         WarManager.cleanupExpiredRegistrations();
 
-        // 2) Vérifier qu'il est dans une faction valable.
         FPlayer fp = FPlayers.getInstance().getByPlayer(context.player);
         if (fp == null || fp.getFaction() == null || fp.getFaction().isWilderness()) {
             context.msg(ChatColor.RED + "Vous devez être dans une faction pour déclarer la guerre.");
             return;
         }
-
-        // 3) Récupérer le royaume attaquant.
         Faction playerFaction = fp.getFaction();
         Kingdom attacker = KingdomsManager.getKingdomByFactionName(playerFaction.getTag());
         if (attacker == null) {
@@ -54,13 +47,10 @@ public class DeclareWarCommand extends KingdomCommand {
             return;
         }
 
-        // 4) Vérifier la bonne taille des arguments.
         if (context.args.size() < 3) {
             context.msg(ChatColor.RED + "Usage : " + getUsageTranslation());
             return;
         }
-
-        // 5) Parser les arguments.
         String defenderName = context.args.get(0);
         String dateStr      = context.args.get(1);
         String timeStr      = context.args.get(2);
@@ -94,29 +84,36 @@ public class DeclareWarCommand extends KingdomCommand {
         LocalDate date;
         LocalTime time;
         try {
-            date = LocalDate.parse(dateStr);   // format YYYY-MM-DD
-            time = LocalTime.parse(timeStr);   // format HH:MM
-        } catch (DateTimeParseException e) {
-            context.msg(ChatColor.RED + "Date ou heure invalide. Formats : YYYY-MM-DD et HH:MM");
+            String ds = dateStr.trim();
+            if (ds.equalsIgnoreCase("TODAY")) {
+                date = LocalDate.now();
+            } else if (ds.equalsIgnoreCase("TOMORROW")) {
+                date = LocalDate.now().plusDays(1);
+            } else {
+                date = LocalDate.parse(ds); // YYYY-MM-DD
+            }
+        } catch (DateTimeParseException ex) {
+            context.msg(ChatColor.RED + "Date invalide. Utilisez YYYY-MM-DD, TODAY ou TOMORROW.");
             return;
-
         }
+        try {
+            time = LocalTime.parse(timeStr);   // HH:MM
+        } catch (DateTimeParseException ex) {
+            context.msg(ChatColor.RED + "Heure invalide. Format attendu : HH:MM");
+            return;
+        }
+
         LocalDateTime startDateTime = LocalDateTime.of(date, time);
         LocalDateTime now = LocalDateTime.now();
 
-        // Vérification du délai minimal
         if (startDateTime.isBefore(now.plus(WarManager.MIN_TIME_BEFORE_WAR))) {
             context.msg(ChatColor.RED + "Vous devez déclarer la guerre au moins "
-                    + WarManager.MIN_TIME_BEFORE_WAR.toMinutes()
-                    + " minutes à l'avance.");
+                    + WarManager.MIN_TIME_BEFORE_WAR.toMinutes() + " minutes à l'avance.");
             return;
         }
-
-        // Vérification du délai maximal
         if (startDateTime.isAfter(now.plus(WarManager.MAX_TIME_BEFORE_WAR))) {
             context.msg(ChatColor.RED + "Vous ne pouvez pas déclarer la guerre plus de "
-                    + WarManager.MAX_TIME_BEFORE_WAR.toMinutes()
-                    + " minutes à l'avance.");
+                    + WarManager.MAX_TIME_BEFORE_WAR.toMinutes() + " minutes à l'avance.");
             return;
         }
 
@@ -127,6 +124,6 @@ public class DeclareWarCommand extends KingdomCommand {
     @Override
     public String getUsageTranslation() {
         return ChatColor.GREEN + "declarewar "
-                + ChatColor.WHITE + "<royaume> <YYYY-MM-DD> <HH:MM>";
+                + ChatColor.WHITE + "<royaume> <YYYY-MM-DD|TODAY|TOMORROW> <HH:MM>";
     }
 }
