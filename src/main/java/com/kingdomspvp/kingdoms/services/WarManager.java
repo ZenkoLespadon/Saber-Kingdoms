@@ -216,12 +216,9 @@ Mettre [WAR] devant tous les messages liées aux guerres pour éviter les confus
         }
     }
 
-    /** Passe la guerre en INPROGRESS, lance la fenêtre de détection et le runtime. */
+    // Java
     private static void startWar(War w) {
-        if (w.getStatus() != WarStatus.REGISTRATION) {
-            Bukkit.getLogger().warning("[WarManager] startWar ignoré (ID=" + w.getId() + ", statut=" + w.getStatus() + ")");
-            return;
-        }
+        if (w.getStatus() != WarStatus.REGISTRATION) { /* ... */ return; }
 
         w.setStatus(WarStatus.INPROGRESS);
         warsJSON.addWar(w);
@@ -241,15 +238,13 @@ Mettre [WAR] devant tous les messages liées aux guerres pour éviter les confus
         );
         detectionTimeoutTasks.put(w.getId(), taskId);
 
-
         enableDetectionFor(w);
+
+        sendToRegisteredPlayers(w, buildParticipantsMessage(w));
 
         sendToAttackers(w, buildWaitForAttackMessage(w.getDefenderKingdom()));
 
-        // Un seul envoi de l'événement
         Bukkit.getPluginManager().callEvent(new WarStartEvent(w));
-
-        // ➜ Démarrer le runtime de guerre (timer, UIs, scoring, etc.)
         WarRuntime.begin(w);
     }
 
@@ -349,8 +344,11 @@ Mettre [WAR] devant tous les messages liées aux guerres pour éviter les confus
         String attackersLine = formatLine("Attaquants :", attackers, atkColor);
         String defendersLine = formatLine("Défenseurs :", defenders, defColor);
 
-        String legacy = org.bukkit.ChatColor.GOLD + attackersLine + "\n" +
-                org.bukkit.ChatColor.GOLD + defendersLine;
+        String legacy = ChatColor.GOLD + "---------------------" + "\n"
+                + "Participants à la guerre :\n" + ChatColor.GOLD + "---------------------\n"
+                + attackersLine + "\n" + ChatColor.GOLD + defendersLine
+                + "\n" + ChatColor.GOLD + "---------------------";
+
 
         return TextComponent.fromLegacyText(legacy);
     }
