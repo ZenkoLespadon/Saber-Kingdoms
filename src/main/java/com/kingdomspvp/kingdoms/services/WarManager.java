@@ -43,15 +43,11 @@ public class WarManager {
 mettre la couleur dans le tab et au dessus de leur tete (pseudo)
 et au dessus de la tête des joueurs
 
-!!!!!! Quand la guerre commence mettre tous les inscrits dans le tchat
-
-!!!!!! les attaquants doivent être plus avantagés
 !!!!!! mettre la pomme cheat 1.20
 
 
 faire un pnj qui ouvre une interface pour rejoindre un royaume
 commande pour changer les joueurs de royaume
-faire une interface pour les déclarations de guerre avec les heures/jours
 
 c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules (vérifier si c'est tous les packs ou juste le sien)
 

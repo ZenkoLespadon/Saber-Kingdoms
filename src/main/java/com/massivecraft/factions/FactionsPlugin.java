@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.kingdomspvp.kingdoms.commands.KingdomCommandExecutor;
+import com.kingdomspvp.kingdoms.gui.WarDeclareWizard;
 import com.kingdomspvp.kingdoms.listeners.KingdomProtectionListener;
 import com.kingdomspvp.kingdoms.listeners.WarDeathListener;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
@@ -274,6 +275,8 @@ public class FactionsPlugin extends MPlugin {
 
             Bukkit.getPluginManager().registerEvents(new KingdomProtectionListener(this), this);
             Bukkit.getPluginManager().registerEvents(new WarDeathListener(), this);
+            Bukkit.getPluginManager().registerEvents(new WarDeclareWizard(), this);
+
 
             getCommand("k").setExecutor(new KingdomCommandExecutor(FactionsPlugin.this));
         });

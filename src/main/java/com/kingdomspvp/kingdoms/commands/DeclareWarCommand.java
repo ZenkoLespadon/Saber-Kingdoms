@@ -1,5 +1,6 @@
 package com.kingdomspvp.kingdoms.commands;
 
+import com.kingdomspvp.kingdoms.gui.WarDeclareWizard;
 import com.kingdomspvp.kingdoms.model.Claim;
 import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.model.War;
@@ -27,7 +28,19 @@ public class DeclareWarCommand extends KingdomCommand {
     }
 
     @Override
+    public boolean validCall(KingdomCommandContext context) {
+        // Accepte 0 arg (ouvre GUI) ou exactement 3 args (royaume, date, heure)
+        if (context.args == null || context.args.isEmpty()) return true;
+        if (context.args.size() == 3) return true;
+        context.sender.sendMessage(getUsageTemplate());
+        return false;
+    }
+
+    @Override
     public void perform(KingdomCommandContext context) {
+
+        System.out.println("DEBUG: perform() called with args: " + context.args + context.args.size());
+
         if (context.player == null) {
             context.msg(ChatColor.RED + "Cette commande ne peut être exécutée que par un joueur.");
             return;
@@ -48,9 +61,11 @@ public class DeclareWarCommand extends KingdomCommand {
         }
 
         if (context.args.size() < 3) {
-            context.msg(ChatColor.RED + "Usage : " + getUsageTranslation());
+            WarDeclareWizard.openFor(context.player); // lance l’UI
             return;
         }
+
+
         String defenderName = context.args.get(0);
         String dateStr      = context.args.get(1);
         String timeStr      = context.args.get(2);

@@ -22,7 +22,6 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-// TODO : Mettre un délai max de 2 minutes  pour l'attaque d'un claim et l'afficher dans le scoreboard, et quand le délai est dépassée, donner la victoire aux défenseurs
 public final class WarRuntime {
 
     // Réglages
@@ -33,7 +32,7 @@ public final class WarRuntime {
     private static final double ROUND_GAIN_FACTOR = 0.80; // -20% de gains par round
 
     // cible à 95% du score both-full → ~9:30 pour 10:00 en 1v1
-    private static final double TARGET_FRACTION   = 0.95;
+    private static final double TARGET_FRACTION   = 0.80;
 
     // P0=0.08, 10 min = 600s → échelle pour viser 1000 points en 10 min (1v1, U=1)
     private static final double TARGET_AT_10_MIN  = 1000.0;

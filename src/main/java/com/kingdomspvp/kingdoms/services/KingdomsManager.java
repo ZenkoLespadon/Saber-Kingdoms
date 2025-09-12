@@ -92,4 +92,8 @@ public class KingdomsManager {
     public static void saveKingdoms() {
         kingdomsJSON.forceSave();
     }
+
+    public static List<Kingdom> getAllKingdoms() {
+        return List.copyOf(kingdomsJSON.getAllKingdoms().values());
+    }
 }
