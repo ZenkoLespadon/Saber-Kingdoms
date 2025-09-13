@@ -242,6 +242,10 @@ public class FactionsPlugin extends MPlugin {
 
         Bukkit.getScheduler().runTask(this, () -> {
             try {
+                for (Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+                    WarManager.clearSidebarFor(p);
+                }
+
                 KingdomsManager.loadKingdoms(success -> {
                     if (Boolean.TRUE.equals(success)) {
                         getLogger().info("Kingdoms loaded");
@@ -335,8 +339,6 @@ public class FactionsPlugin extends MPlugin {
 
     @Override
     public void onDisable() {
-
-
         ShutdownParameter.initShutdown(this);
 
         if (this.AutoLeaveTask != null) {
@@ -347,7 +349,12 @@ public class FactionsPlugin extends MPlugin {
             TextUtil.AUDIENCES.close();
         }
 
+        WarManager.stopAllAndClearAllUIs();
+
         KingdomsManager.saveKingdoms();
+        ClaimManager.saveClaims();
+        // TODO : Mettre une classe dans WarManager pour sauvegarder les guerres
+
         super.onDisable();
     }
 

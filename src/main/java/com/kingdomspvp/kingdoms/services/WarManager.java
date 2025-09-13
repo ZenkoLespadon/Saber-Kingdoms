@@ -31,6 +31,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+import static com.kingdomspvp.kingdoms.services.WarRuntime.stopAll;
+
 /**
  * Gère la vie des guerres (hors phase pré-guerre : déclaration, inscriptions, délais).
  * - Planification démarrage et prompts d'inscription.
@@ -680,5 +682,40 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         String msg = org.bukkit.ChatColor.GOLD + "La guerre contre le Royaume " + defName + org.bukkit.ChatColor.GOLD + " commence !";
         sendToRegisteredPlayers(war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(msg));
     }
+
+    public static void clearSidebarFor(org.bukkit.entity.Player p) {
+        if (p == null) return;
+        org.bukkit.scoreboard.Scoreboard sb = p.getScoreboard();
+        if (sb == null) return;
+
+        // Retirer l’objectif affiché à droite s’il est le nôtre
+        org.bukkit.scoreboard.Objective side = sb.getObjective(org.bukkit.scoreboard.DisplaySlot.SIDEBAR);
+        if (side != null && side.getName() != null && side.getName().startsWith("sbwar_")) {
+            side.unregister();
+        }
+        // Purger tous les objectifs sbwar_ résiduels
+        for (org.bukkit.scoreboard.Objective o : sb.getObjectives()) {
+            String n = o.getName();
+            if (n != null && n.startsWith("sbwar_")) {
+                o.unregister();
+            }
+        }
+        // Purger les teams utilisées par l’UI
+        for (org.bukkit.scoreboard.Team t : new java.util.ArrayList<>(sb.getTeams())) {
+            String n = t.getName();
+            if (n != null && (n.startsWith("war_static_") || n.startsWith("war_line_"))) {
+                try { t.unregister(); } catch (Throwable ignored) {}
+            }
+        }
+    }
+
+    /** Purge globale : enlève BossBars + sidebars pour tous les joueurs. */
+    public static void stopAllAndClearAllUIs() {
+        stopAll(); // enlève BossBars + objectifs/teams connus via BossAndBoard.destroy()
+        for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+            clearSidebarFor(p); // au cas où des objectifs aient survécu à un reload
+        }
+    }
+
 
 }
