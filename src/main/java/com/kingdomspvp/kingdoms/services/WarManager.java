@@ -51,11 +51,12 @@ commande pour changer les joueurs de royaume
 
 c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules (vérifier si c'est tous les packs ou juste le sien)
 
-Mettre [WAR] devant tous les messages liées aux guerres pour éviter les confusions
+!! Mettre [WAR] devant tous les messages liées aux guerres pour éviter les confusions
+!! Enlever le scoreboard quand le serveur reload ou redémarre
  */
 
     public static final Duration MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
-    public static final Duration MAX_TIME_BEFORE_WAR = Duration.ofMinutes(20);
+    public static final Duration MAX_TIME_BEFORE_WAR = Duration.ofHours(48);
 
     /** Délai avant le début pour afficher le bouton d'inscription. */
     public static Duration JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(30); // ex. passez à 5 min en beta
