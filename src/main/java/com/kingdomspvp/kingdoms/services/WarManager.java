@@ -189,12 +189,12 @@ Faire le listener pour le pvp
         );
     }
 
-    private static void sendJoinPrompt(War w, String prefix) {
+    private static void sendJoinPrompt(War w, String message) {
         String cmd = "/k _warjoin " + w.getId();
 
         // Préfixe [War] en legacy (non-cliquable)
         BaseComponent[] prefixed = TextComponent.fromLegacyText(
-                ChatUtil.prefixWithWar(prefix == null ? "" : prefix)
+                ChatUtil.prefixWithWar(message == null ? "" : message)
         );
         TextComponent container = new TextComponent();
         for (BaseComponent bc : prefixed) container.addExtra(bc);
@@ -216,10 +216,34 @@ Faire le listener pour le pvp
         }
     }
 
+    /** Construit le message d'inscription cliquable, préfixé [War], pour un joueur. */
+    public static BaseComponent[] buildJoinPrompt(War w, String message) {
+        String cmd = "/k _warjoin " + w.getId();
 
-    // Java
+        // Préfixe [War] non cliquable
+        BaseComponent[] prefixed = TextComponent.fromLegacyText(
+                ChatUtil.prefixWithWar(message == null ? "" : message)
+        );
+        TextComponent container = new TextComponent();
+        for (BaseComponent bc : prefixed) container.addExtra(bc);
+
+        // Bouton cliquable
+        TextComponent button = new TextComponent("[CLIQUE POUR T'INSCRIRE]");
+        button.setColor(ChatColor.GREEN);
+        button.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd));
+        button.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                new Text("S'inscrire à la guerre " + w.getId())));
+        container.addExtra(button);
+
+        return new BaseComponent[]{ container };
+    }
+
+
     private static void startWar(War w) {
-        if (w.getStatus() != WarStatus.REGISTRATION) { /* ... */ return; }
+        if (w.getStatus() != WarStatus.REGISTRATION) {
+            Bukkit.getLogger().warning("[WarManager] startWar ignoré (ID=" + w.getId() + ", statut=" + w.getStatus() + ")");
+            return;
+        }
 
         w.setStatus(WarStatus.INPROGRESS);
         warsJSON.addWar(w);
@@ -241,13 +265,16 @@ Faire le listener pour le pvp
 
         enableDetectionFor(w);
 
-        sendToRegisteredPlayers(w, buildParticipantsMessage(w));
-
         sendToAttackers(w, buildWaitForAttackMessage(w.getDefenderKingdom()));
 
         Bukkit.getPluginManager().callEvent(new WarStartEvent(w));
+
         WarRuntime.begin(w);
+
+        // ➜ NOTIF SIMPLE, EXACTEMENT AU DÉPART DE LA GUERRE
+        notifyUnregisteredAtWarStart(w);
     }
+
 
     // ------------------------------------------------------------------------
     // Maintenance périodique
@@ -276,6 +303,33 @@ Faire le listener pour le pvp
         }
         return toRemove.size();
     }
+
+    private static void notifyUnregisteredAtWarStart(War w) {
+        System.out.println("La guerre commence");
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            FPlayer fp = FPlayers.getInstance().getByPlayer(p);
+            if (fp == null || fp.getFaction() == null || fp.getFaction().isWilderness()) continue;
+
+            Kingdom pk = KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
+            if (pk == null) continue;
+
+            boolean sameSide = pk.equals(w.getAttackerKingdom()) || pk.equals(w.getDefenderKingdom());
+            if (!sameSide) continue;
+
+            boolean alreadyRegistered =
+                    w.getAttackerPlayers().contains(p.getUniqueId()) ||
+                            w.getDefenderPlayers().contains(p.getUniqueId());
+            if (alreadyRegistered) continue;
+
+            Kingdom opp = pk.equals(w.getAttackerKingdom()) ? w.getDefenderKingdom() : w.getAttackerKingdom();
+            String legacy = org.bukkit.ChatColor.GOLD + "La guerre contre " +
+                    ChatUtil.kingdomName(opp) + org.bukkit.ChatColor.GOLD +
+                    " commence, inscrivez-vous ! ";
+
+            p.spigot().sendMessage(buildJoinPrompt(w, legacy));
+        }
+    }
+
 
     private static void scheduleHourlyCleanup() {
         long ticksHour = 20L * 60 * 60;
@@ -322,7 +376,15 @@ Faire le listener pour le pvp
             sendToRegisteredPlayers(war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(legacyMsg));
 
             // ➜ Confirmation individuelle avec [War]
-            com.kingdomspvp.kingdoms.utils.ChatUtil.sendWarMsg(player, org.bukkit.ChatColor.GREEN + "Inscription enregistrée.");
+            ChatUtil.sendWarMsg(player, org.bukkit.ChatColor.GREEN + "Inscription enregistrée.");
+
+            if (war.getStatus() == WarStatus.INPROGRESS) {
+                if (war.hasCombatStarted()) {
+                    player.spigot().sendMessage(buildTpToWarNowMessage(war.getId()));
+                } else {
+                    player.spigot().sendMessage(buildWaitForAttackMessage(war.getDefenderKingdom()));
+                }
+            }
         }
 
         return added;
@@ -753,6 +815,4 @@ Faire le listener pour le pvp
         JOIN_PROMPT_LEAD_TIME = Duration.ofMinutes(5);
         Bukkit.getLogger().info("[WarManager] TEST MODE OFF: window 1–24 h, join prompt 5m.");
     }
-
-
 }

@@ -352,24 +352,29 @@ public final class WarDeclareWizard implements Listener {
         LocalDateTime end   = day.atTime(23, 59);
         return !end.isBefore(windowStart()) && !start.isAfter(windowEnd());
     }
+
     private static List<Integer> validHoursFor(LocalDate day) {
+        int step = WarManager.isTestMode() ? 1 : 5; // 1 min en test, 5 min sinon
         List<Integer> hours = new ArrayList<>();
         for (int h = 0; h < 24; h++) {
             boolean ok = false;
-            for (int m = 0; m < 60; m += 5) {
+            for (int m = 0; m < 60; m += step) {
                 if (withinWindow(LocalDateTime.of(day, LocalTime.of(h, m)))) { ok = true; break; }
             }
             if (ok) hours.add(h);
         }
         return hours;
     }
+
     private static List<Integer> validMinutesFor(LocalDate day, int hour) {
+        int step = WarManager.isTestMode() ? 1 : 5; // 1 min en test, 5 min sinon
         List<Integer> mins = new ArrayList<>();
-        for (int m = 0; m < 60; m += 5) {
+        for (int m = 0; m < 60; m += step) {
             if (withinWindow(LocalDateTime.of(day, LocalTime.of(hour, m)))) mins.add(m);
         }
         return mins;
     }
+
 
     // ----------------- UI UTILS -----------------
     private static boolean isOurTitle(String t) {
