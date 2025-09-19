@@ -7,6 +7,7 @@ import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
+import com.kingdomspvp.kingdoms.utils.ChatUtil;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import org.bukkit.ChatColor;
@@ -84,7 +85,7 @@ public class WarClaimListener implements Listener {
             insideAttackedByWar.computeIfAbsent(w.getId(), k -> ConcurrentHashMap.newKeySet());
             Set<UUID> set = insideAttackedByWar.get(w.getId());
 
-            p.sendMessage(getMessageOnMove(w, !wasInside && nowInside));
+            ChatUtil.sendWarMsg(p, getMessageOnMove(w, !wasInside && nowInside));
         }
     }
 

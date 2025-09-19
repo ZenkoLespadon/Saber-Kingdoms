@@ -8,13 +8,11 @@ import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.utils.ChatUtil;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
-
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
-import org.bukkit.boss.BossBar;
-import org.bukkit.boss.KeyedBossBar;
 import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.DisplaySlot;
 
@@ -31,13 +29,12 @@ public final class WarRuntime {
     private static final int MAX_ROUNDS = 4;
     private static final double ROUND_GAIN_FACTOR = 0.80; // -20% de gains par round
 
-    // cible à 95% du score both-full → ~9:30 pour 10:00 en 1v1
+    // cible à 80% du score both-full → ~8:00 pour 10:00 en 1v1
     private static final double TARGET_FRACTION   = 0.80;
 
     // P0=0.08, 10 min = 600s → échelle pour viser 1000 points en 10 min (1v1, U=1)
     private static final double TARGET_AT_10_MIN  = 1000.0;
     private static final double SCALE = TARGET_AT_10_MIN / (TARGET_FRACTION * 0.5 * 1 * WAR_DURATION_SECONDS);
-
 
     // Paramètres (cohérents avec la description)
     private static final double P0    = 0.08;  // pts/sec (présence max si 100% attaquants / 0% défenseurs)
@@ -45,20 +42,15 @@ public final class WarRuntime {
     private static final double U_MIN = 0.7;
     private static final double U_MAX = 1.4;
 
-    public static void onDetectionWindowStarted(War war, Duration window) {
-        getOrCreate(war).startDetectionWindow(window);
-    }
-
-    public static void onDetectionWindowEnded(War war) {
-        getOrCreate(war).endDetectionWindow();
-    }
+    public static void onDetectionWindowStarted(War war, Duration window) { getOrCreate(war).startDetectionWindow(window); }
+    public static void onDetectionWindowEnded(War war) { getOrCreate(war).endDetectionWindow(); }
 
     // API publique
     public static void begin(War war) { getOrCreate(war).onWarBegan(); }
     public static void onFirstClaimAttacked(War war, Claim attackedDefClaim) { getOrCreate(war).onFirstClaimAttacked(attackedDefClaim); }
     public static void tpToWar(String warId, Player p) {
         War war = WarManager.getWar(warId);
-        if (war == null) { p.sendMessage(org.bukkit.ChatColor.RED + "Guerre introuvable."); return; }
+        if (war == null) { ChatUtil.sendWarMsg(p, org.bukkit.ChatColor.RED + "Guerre introuvable."); return; }
         getOrCreate(war).teleportPlayer(p);
     }
     public static void stopAll() {
@@ -66,11 +58,33 @@ public final class WarRuntime {
         SESSIONS.clear();
     }
 
-    // Victoire DEF automatique si la fenêtre de détection expire sans attaque
-    public static void defendersAutoWinNoAttack(War war) {
-        getOrCreate(war).endRoundDefendersNoAttack();
+    // Nettoyage UI au reload/redémarrage
+    public static void clearSidebarFor(Player p) {
+        if (p == null) return;
+        org.bukkit.scoreboard.Scoreboard sb = p.getScoreboard();
+        if (sb == null) return;
+
+        org.bukkit.scoreboard.Objective side = sb.getObjective(DisplaySlot.SIDEBAR);
+        if (side != null && side.getName() != null && side.getName().startsWith("sbwar_")) side.unregister();
+
+        for (org.bukkit.scoreboard.Objective o : sb.getObjectives()) {
+            String n = o.getName();
+            if (n != null && n.startsWith("sbwar_")) o.unregister();
+        }
+        for (org.bukkit.scoreboard.Team t : new ArrayList<>(sb.getTeams())) {
+            String n = t.getName();
+            if (n != null && (n.startsWith("war_static_") || n.startsWith("war_line_"))) {
+                try { t.unregister(); } catch (Throwable ignored) {}
+            }
+        }
+    }
+    public static void stopAllAndClearAllUIs() {
+        stopAll();
+        for (Player p : Bukkit.getOnlinePlayers()) clearSidebarFor(p);
     }
 
+    // Victoire DEF automatique si la fenêtre de détection expire sans attaque
+    public static void defendersAutoWinNoAttack(War war) { getOrCreate(war).endRoundDefendersNoAttack(); }
 
     // interne
     private static final Map<String, WarSession> SESSIONS = new ConcurrentHashMap<>();
@@ -81,7 +95,7 @@ public final class WarRuntime {
         private final War war;
         private final org.bukkit.plugin.Plugin plugin = com.massivecraft.factions.FactionsPlugin.getInstance();
 
-        private int roundIndex = 1;              // 1..MAX_ROUNDS
+        private int roundIndex = 1;               // 1..MAX_ROUNDS
         private double roundGainMultiplier = 1.0; // 1.0, 0.8, 0.64, 0.512
         private boolean combatActive = false;     // timer combat (round) actif ?
 
@@ -95,7 +109,7 @@ public final class WarRuntime {
         private double U               = 1.0;
 
         private int A = 0, D = 0; // inscrits
-        private int defendersKills = 0; // pour le bonus passif anti-turtle
+        private int defendersKills = 0; // pour le bonus passif anti-turtle (réservé évolutions)
 
         private final Map<UUID, BossAndBoard> ui = new ConcurrentHashMap<>();
 
@@ -105,61 +119,38 @@ public final class WarRuntime {
         void startDetectionWindow(Duration window) {
             this.inDetectionWindow = true;
             this.detectionSecondsLeft = (int) Math.max(0, window.getSeconds());
-            // On n’est PAS en combat tant que le premier claim n’est pas attaqué
             this.combatActive = false;
             this.attackedClaim = null;
-
-            // Masquer la BossBar sur tous les joueurs inscrits pendant la détection
-            for (BossAndBoard bb : ui.values()) {
-                bb.hideBar();
-            }
+            for (BossAndBoard bb : ui.values()) bb.hideBar();
         }
 
-        void endDetectionWindow() {
-            this.inDetectionWindow = false;
-        }
+        void endDetectionWindow() { this.inDetectionWindow = false; }
 
         WarSession(War war) { this.war = war; }
 
         void onWarBegan() {
             this.A = Math.max(1, war.getAttackerPlayers().size());
             this.D = Math.max(1, war.getDefenderPlayers().size());
-
             double rawU = Math.pow((double) D / Math.max(1, A), BETA);
             this.U = Math.max(U_MIN, Math.min(U_MAX, rawU));
-
-            // Le timer/objectif réels sont initialisés au 1er claim attaqué
             startTicker();
         }
 
-
-
         void onFirstClaimAttacked(Claim c) {
             this.attackedClaim = c;
-
-            // (Re)lance le round
             this.seconds = WAR_DURATION_SECONDS;
             this.combatActive = true;
-
-            // Objectif inchangé (en %), mais les GAINS par seconde seront multipliés par roundGainMultiplier
             this.targetPoints = SCALE * TARGET_FRACTION * 0.5 * P0 * U * WAR_DURATION_SECONDS;
-
-            // Reset score d’affichage pour le nouveau round
             this.pointsAttackers = 0.0;
-
-            // UI : on laisse les mêmes BossBars/scoreboards, progression repartira de 0%
         }
-
-
 
         void stop(boolean announce) {
             if (taskId != -1) { Bukkit.getScheduler().cancelTask(taskId); taskId = -1; }
             for (BossAndBoard bb : ui.values()) bb.destroy();
             ui.clear();
-
             if (announce) {
-                WarManager.sendToRegisteredPlayers(war,
-                        net.md_5.bungee.api.chat.TextComponent.fromLegacyText(org.bukkit.ChatColor.GOLD + winnerLine()));
+                String msg = ChatUtil.prefixWithWar(org.bukkit.ChatColor.GOLD + winnerLine());
+                WarManager.sendToRegisteredPlayers(war, TextComponent.fromLegacyText(msg));
             }
         }
 
@@ -169,14 +160,11 @@ public final class WarRuntime {
                     plugin,
                     () -> {
                         updateOnlineUIs();
-
-                        // MAJ affichages + scoring
                         tickScoringAndDisplays();
 
-                        // Décompte de la fenêtre de détection quand pas en combat
                         if (inDetectionWindow && !combatActive) {
                             if (detectionSecondsLeft > 0) detectionSecondsLeft--;
-                            else inDetectionWindow = false; // sécurité si le timeout côté WarManager a fini
+                            else inDetectionWindow = false;
                         }
 
                         if (combatActive) {
@@ -192,7 +180,6 @@ public final class WarRuntime {
         private void endWar(boolean attackersInstantWin) {
             final boolean attackersWon = (pointsAttackers >= targetPoints);
 
-            // % de capture affiché (borné 0..100)
             double percent = (targetPoints > 0.0) ? (pointsAttackers / targetPoints * 100.0) : 0.0;
             if (percent < 0.0) percent = 0.0;
             if (percent > 100.0) percent = 100.0;
@@ -213,29 +200,18 @@ public final class WarRuntime {
                         + org.bukkit.ChatColor.AQUA + String.format(java.util.Locale.US, "%.1f%%", percent);
             }
 
+            WarManager.sendToRegisteredPlayers(war, TextComponent.fromLegacyText(ChatUtil.prefixWithWar(roundMsg)));
 
-
-            // Envoi (fin de round)
-            WarManager.sendToRegisteredPlayers(
-                    war,
-                    net.md_5.bungee.api.chat.TextComponent.fromLegacyText(roundMsg)
-            );
-
-            // Si les attaquants ont gagné : transfert du claim capturé
             if (attackersWon && attackedClaim != null) {
-                // Transfert
                 ClaimManager.transferClaimToKingdom(attackedClaim, war.getAttackerKingdom().getName());
             }
 
             WarManager.prepareNextRound(war, attackersWon && roundIndex < MAX_ROUNDS);
 
-
             if (attackersWon && roundIndex < MAX_ROUNDS) {
-                // Préparer round suivant (−20% de gains)
                 roundIndex++;
                 roundGainMultiplier *= ROUND_GAIN_FACTOR;
 
-                // Reset état "entre deux rounds"
                 this.combatActive = false;
                 this.attackedClaim = null;
                 this.pointsAttackers = 0.0;
@@ -243,10 +219,10 @@ public final class WarRuntime {
 
                 WarManager.prepareNextRound(war, true);
 
-                WarManager.sendToAttackers(war,
-                        org.bukkit.ChatColor.GOLD + "Round " + roundIndex + " — Attaquez un nouveau claim pour commencer !");
-                WarManager.sendToDefenders(war,
-                        org.bukkit.ChatColor.RED + "Round " + roundIndex + " — Préparez la défense.");
+                WarManager.sendToAttackers(war, ChatUtil.prefixWithWar(
+                        org.bukkit.ChatColor.GOLD + "Round " + roundIndex + " — Attaquez un nouveau claim pour commencer !"));
+                WarManager.sendToDefenders(war, ChatUtil.prefixWithWar(
+                        org.bukkit.ChatColor.RED + "Round " + roundIndex + " — Préparez la défense."));
 
                 return;
             }
@@ -256,37 +232,32 @@ public final class WarRuntime {
             stop(false);
         }
 
-
         private String winnerLine() { return winnerLine(false); }
-
         private String winnerLine(boolean attackersInstantWin) {
             String atk = ChatUtil.kingdomName(war.getAttackerKingdom());
             String def = ChatUtil.kingdomName(war.getDefenderKingdom());
-            if (pointsAttackers >= targetPoints) {
-                return "Victoire des attaquants (Royaume " + atk + ")";
-            }
+            if (pointsAttackers >= targetPoints) return "Victoire des attaquants (Royaume " + atk + ")";
             return "Victoire des défenseurs (Royaume " + def + ")";
         }
-
 
         // ---- TP rejoindre ----
         void teleportPlayer(Player p) {
             if (war.getStatus() != WarStatus.INPROGRESS || !war.hasCombatStarted()) {
-                p.sendMessage(org.bukkit.ChatColor.RED + "Pas en phase de combat."); return;
+                ChatUtil.sendWarMsg(p, org.bukkit.ChatColor.RED + "Pas en phase de combat."); return;
             }
             if (!isRegistered(p.getUniqueId())) {
-                p.sendMessage(org.bukkit.ChatColor.RED + "Tu n'es pas inscrit à cette guerre."); return;
+                ChatUtil.sendWarMsg(p, org.bukkit.ChatColor.RED + "Tu n'es pas inscrit à cette guerre."); return;
             }
             Kingdom pk = getPlayerKingdom(p);
-            if (pk == null) { p.sendMessage(org.bukkit.ChatColor.RED + "Royaume inconnu."); return; }
-            if (attackedClaim == null) { p.sendMessage(org.bukkit.ChatColor.RED + "La zone d'affrontement n'est pas prête."); return; }
+            if (pk == null) { ChatUtil.sendWarMsg(p, org.bukkit.ChatColor.RED + "Royaume inconnu."); return; }
+            if (attackedClaim == null) { ChatUtil.sendWarMsg(p, org.bukkit.ChatColor.RED + "La zone d'affrontement n'est pas prête."); return; }
 
             org.bukkit.Location tp;
             if (pk.equals(war.getDefenderKingdom())) {
                 tp = getClaimCenter(attackedClaim);
             } else {
                 Claim staging = WarManager.findAdjacentAttackerClaim(war, attackedClaim);
-                if (staging == null) { p.sendMessage(org.bukkit.ChatColor.RED + "Aucun point de ralliement attaquant adjacent."); return; }
+                if (staging == null) { ChatUtil.sendWarMsg(p, org.bukkit.ChatColor.RED + "Aucun point de ralliement attaquant adjacent."); return; }
                 tp = WarManager.getStagingPointNearBorder(staging, attackedClaim, 10);
             }
             p.teleport(tp);
@@ -314,27 +285,25 @@ public final class WarRuntime {
             });
         }
 
-        // Java
         private void tickScoringAndDisplays() {
             if (inDetectionWindow && !combatActive) {
                 for (var entry : ui.entrySet()) {
                     UUID id = entry.getKey();
-                    Player p = org.bukkit.Bukkit.getPlayer(id);
+                    Player p = Bukkit.getPlayer(id);
                     if (p == null) continue;
 
                     entry.getValue().updateDetection(
                             detectionSecondsLeft,
-                            "Attaquez un claim" // objectif affiché
+                            "Attaquez un claim"
                     );
                 }
-                return; // ne pas exécuter la partie "combat"
+                return;
             }
 
             if (attackedClaim != null) {
                 int aNow = attackersInClaimNow();
                 int dNow = defendersInClaimNow();
 
-                // Les points n'augmentent que si au moins un attaquant est présent
                 if (aNow > 0) {
                     double rA = clamp01((double) aNow / Math.max(1, A));
                     double rD = clamp01((double) dNow / Math.max(1, D));
@@ -343,32 +312,25 @@ public final class WarRuntime {
                 }
             }
 
-            // 2) --- Mise à jour des affichages (scoreboard + bossbar) ---
             int attackersCount = war.getAttackerPlayers().size();
             int defendersCount = war.getDefenderPlayers().size();
 
             for (var entry : ui.entrySet()) {
-                java.util.UUID id = entry.getKey();
-                org.bukkit.entity.Player p = org.bukkit.Bukkit.getPlayer(id);
+                UUID id = entry.getKey();
+                Player p = Bukkit.getPlayer(id);
                 if (p == null) continue;
 
                 boolean isAttacker = war.getAttackerPlayers().contains(id);
                 int allies  = isAttacker ? attackersCount : defendersCount;
                 int enemies = isAttacker ? defendersCount : attackersCount;
 
-                // K/D/A individuel (affichage seulement)
                 KDA k = kdas.getOrDefault(id, new KDA());
                 String kdaStr = k.k + "/" + k.d + "/" + k.a;
 
-                double ptsForSide = pointsAttackers; // on affiche l'objectif côté attaquants
+                double ptsForSide = pointsAttackers;
                 entry.getValue().update(
-                        seconds,
-                        allies,
-                        enemies,
-                        kdaStr,
-                        ptsForSide,
-                        pointsAttackers,
-                        targetPoints
+                        seconds, allies, enemies, kdaStr,
+                        ptsForSide, pointsAttackers, targetPoints
                 );
             }
         }
@@ -412,7 +374,6 @@ public final class WarRuntime {
             return KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
         }
 
-        // Overworld util
         private static World getOverworld() {
             for (World w : Bukkit.getWorlds()) if (w.getEnvironment() == World.Environment.NORMAL) return w;
             return Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0);
@@ -426,7 +387,6 @@ public final class WarRuntime {
             return new org.bukkit.Location(world, cx + 0.5, y + 1, cz + 0.5);
         }
 
-        // K/D/A (affichage) + détection des kills DEF pour le bonus passif
         void onKill(UUID killer, UUID victim) {
             kdas.computeIfAbsent(killer, k -> new KDA()).k++;
             kdas.computeIfAbsent(victim, k -> new KDA()).d++;
@@ -434,17 +394,12 @@ public final class WarRuntime {
         }
         void onAssist(UUID assister) { kdas.computeIfAbsent(assister, k -> new KDA()).a++; }
 
-        // Fin de round côté défenseurs (aucune attaque n'a commencé)
         private void endRoundDefendersNoAttack() {
-            // Stop l'affichage "détection" si encore actif
             this.inDetectionWindow = false;
-            // Termine le round comme une victoire DEF (équivaut à timer écoulé)
             endWar(false);
         }
 
-
         private static double clamp01(double v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
-        private String fmt(double v) { return String.format(java.util.Locale.US, "%.1f", v); }
     }
 
     // ===================== UI =====================
@@ -463,7 +418,6 @@ public final class WarRuntime {
         private final Line objective;
 
         static BossAndBoard attachTo(Player p, int seconds, War war, double targetPoints) {
-            // BossBar (comme avant)
             org.bukkit.boss.BossBar bar = Bukkit.createBossBar(
                     makeBossTitle(war, 0.0, targetPoints),
                     BarColor.WHITE,
@@ -473,11 +427,9 @@ public final class WarRuntime {
             bar.addPlayer(p);
             bar.setVisible(true);
 
-            // *** IMPORTANT *** : on n'écrase PAS le scoreboard du joueur
             org.bukkit.scoreboard.Scoreboard sb = p.getScoreboard();
             if (sb == null) sb = Bukkit.getScoreboardManager().getMainScoreboard();
 
-            // Objectif SIDEBAR dédié à ce joueur pour éviter tout conflit global
             String objName = "sbwar_" + p.getUniqueId().toString().substring(0, 8);
             org.bukkit.scoreboard.Objective old = sb.getObjective(objName);
             if (old != null) old.unregister();
@@ -486,18 +438,12 @@ public final class WarRuntime {
             org.bukkit.scoreboard.Objective obj = sb.registerNewObjective(objName, "dummy", title);
             obj.setDisplaySlot(DisplaySlot.SIDEBAR);
 
-            // *** PRÉSERVATION HEALTHBAR ***
-            // Si aucun objectif BELOW_NAME n'est affiché, on en crée un basé sur le critère "health".
-            // Si HealthBar-Reloaded gère déjà BELOW_NAME, on NE TOUCHE A RIEN.
             if (sb.getObjective(DisplaySlot.BELOW_NAME) == null) {
                 org.bukkit.scoreboard.Objective hb = sb.getObjective("hb_health");
-                if (hb == null) {
-                    hb = sb.registerNewObjective("hb_health", "health", org.bukkit.ChatColor.RED + "❤");
-                }
+                if (hb == null) hb = sb.registerNewObjective("hb_health", "health", org.bukkit.ChatColor.RED + "❤");
                 hb.setDisplaySlot(DisplaySlot.BELOW_NAME);
             }
 
-            // Lignes (teams) — noms préfixés "war_" pour pouvoir les nettoyer sans toucher aux autres plugins
             addStaticLine(sb, obj, 10, org.bukkit.ChatColor.DARK_GRAY + "────────────");
             LineTimer timer = new LineTimer(sb, obj, 9, "⏳ Temps", formatMMSS(seconds));
             addStaticLine(sb, obj, 8, "");
@@ -509,10 +455,8 @@ public final class WarRuntime {
             Line objective = new Line(sb, obj, 2, "Objectif", "100%");
             addStaticLine(sb, obj, 1, org.bukkit.ChatColor.GRAY + "kingdoms.example");
 
-            // *** NE PAS faire p.setScoreboard(sb); ***
             return new BossAndBoard(p, war, bar, sb, obj, timer, allies, enemies, kda, points, objective);
         }
-
 
         private BossAndBoard(Player p, War war, org.bukkit.boss.BossBar bar,
                              org.bukkit.scoreboard.Scoreboard sb, org.bukkit.scoreboard.Objective obj,
@@ -532,7 +476,6 @@ public final class WarRuntime {
             enemies.setValue(String.valueOf(enemiesCount));
             kda.setValue(kdaStr);
 
-            // Calcul du pourcentage
             double percent = (targetPoints > 0.0) ? (attackerPoints / targetPoints * 100.0) : 0.0;
             if (percent > 100.0) percent = 100.0;
 
@@ -546,30 +489,21 @@ public final class WarRuntime {
                     + org.bukkit.ChatColor.WHITE + String.format("%.1f%%", percent));
         }
 
-
         void destroy() {
             try { bar.removeAll(); } catch (Throwable ignored) {}
-
             try {
-                // Supprime notre objectif SIDEBAR dédié
                 if (obj != null) {
                     org.bukkit.scoreboard.Objective o = sb.getObjective(obj.getName());
                     if (o != null) o.unregister();
                 }
-
-                // Supprime UNIQUEMENT nos teams (préfixes "war_static_" et "war_line_")
-                for (org.bukkit.scoreboard.Team t : new java.util.ArrayList<>(sb.getTeams())) {
+                for (org.bukkit.scoreboard.Team t : new ArrayList<>(sb.getTeams())) {
                     String n = t.getName();
                     if (n != null && (n.startsWith("war_static_") || n.startsWith("war_line_"))) {
                         try { t.unregister(); } catch (Throwable ignored2) {}
                     }
                 }
             } catch (Throwable ignored) {}
-
-            // *** NE PAS remettre le main scoreboard ici ***
-            // (On laisse le scoreboard en place pour ne pas casser HealthBar-Reloaded ou d'autres plugins.)
         }
-
 
         private static void addStaticLine(org.bukkit.scoreboard.Scoreboard sb,
                                           org.bukkit.scoreboard.Objective obj,
@@ -582,7 +516,6 @@ public final class WarRuntime {
             team.addEntry(entry);
             obj.getScore(entry).setScore(score);
         }
-
 
         private static String formatMMSS(int total) {
             int m = total / 60, s = total % 60; return String.format("%d:%02d", m, s);
@@ -633,6 +566,7 @@ public final class WarRuntime {
         private static String makeBossTitle(War war, double attackerPoints, double targetPoints) {
             return makeSidebarTitle(war) + org.bukkit.ChatColor.GRAY + "  [" + fmt1(attackerPoints) + "/" + fmt1(targetPoints) + "]";
         }
+        @SuppressWarnings("unused")
         private static String makeBossTitleForProgress(double attackerPoints, double targetPoints) {
             return org.bukkit.ChatColor.GOLD + "Progression attaquants: "
                     + org.bukkit.ChatColor.WHITE + fmt1(attackerPoints)
@@ -642,27 +576,17 @@ public final class WarRuntime {
 
         void updateDetection(int secondsLeft, String objectiveText) {
             if (p == null || !p.isOnline()) return;
-
-            // Scoreboard uniquement (pas de bossbar en détection)
             timer.setTime(formatMMSS(Math.max(0, secondsLeft)));
             allies.setValue("—");
             enemies.setValue("—");
             kda.setValue("0/0/0");
             points.setValue("—");
             objective.setValue(objectiveText != null ? objectiveText : "Attaquez un claim");
-
-            // Assure que la BossBar reste cachée
             hideBar();
         }
 
-        void hideBar() {
-            try { bar.setVisible(false); } catch (Throwable ignored) {}
-        }
-
-        void showBar() {
-            try { bar.setVisible(true); } catch (Throwable ignored) {}
-        }
-
+        void hideBar() { try { bar.setVisible(false); } catch (Throwable ignored) {} }
+        void showBar() { try { bar.setVisible(true); } catch (Throwable ignored) {} }
 
         private static String fmt1(double v) { return String.format(java.util.Locale.US, "%.1f", v); }
     }

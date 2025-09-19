@@ -5,6 +5,7 @@ import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
+import com.kingdomspvp.kingdoms.utils.ChatUtil;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.Faction;
@@ -36,7 +37,6 @@ public final class WarDeclareWizard implements Listener {
     private static final String TITLE_MINUTE   = ChatColor.DARK_GREEN + "Choix des minutes";
     private static final String TITLE_CONFIRM  = ChatColor.RED + "Déclaration de guerre";
 
-    // confirmations standard (écart 2 cases : 11/13/15)
     private static final int SLOT_RED_DEFAULT   = 11;
     private static final int SLOT_MID_DEFAULT   = 13;
     private static final int SLOT_GREEN_DEFAULT = 15;
@@ -49,39 +49,35 @@ public final class WarDeclareWizard implements Listener {
         LocalDate day;
         Integer hour, minute;
         Step step = Step.KINGDOM;
-        int page = 0; // pagination royaumes (27 slots → 14 items/page)
+        int page = 0;
         State(UUID id) { this.playerId = id; }
         LocalDateTime when() { return LocalDateTime.of(day, LocalTime.of(hour, minute)); }
     }
 
     private static final Map<UUID, State> STATES = new ConcurrentHashMap<>();
 
-    // ===== API =====
     public static void openFor(Player p) {
         if (p == null) return;
         State s = new State(p.getUniqueId());
 
         FPlayer fp = FPlayers.getInstance().getByPlayer(p);
         Faction fac = (fp != null) ? fp.getFaction() : null;
-        if (fac == null || fac.isWilderness()) { p.sendMessage(ChatColor.RED + "Vous devez être dans une faction pour déclarer la guerre."); return; }
+        if (fac == null || fac.isWilderness()) { ChatUtil.sendWarMsg(p, ChatColor.RED + "Vous devez être dans une faction pour déclarer la guerre."); return; }
 
         Kingdom atk = KingdomsManager.getKingdomByFactionName(fac.getTag());
-        if (atk == null) { p.sendMessage(ChatColor.RED + "Votre faction n'appartient à aucun royaume."); return; }
+        if (atk == null) { ChatUtil.sendWarMsg(p, ChatColor.RED + "Votre faction n'appartient à aucun royaume."); return; }
 
         s.attacker = atk;
         STATES.put(p.getUniqueId(), s);
         openKingdomList(p, s);
     }
 
-    // ===== RENDERERS =====
-
-    // Page 1/2 royaumes : inventaire 27, laines colorées centrées
+    // ----------------- RENDER -----------------
     private static void openKingdomList(Player p, State s) {
         s.step = Step.KINGDOM;
 
         List<Kingdom> all = KingdomsManager.getAllKingdoms()
-                .stream().filter(k -> !k.equals(s.attacker))
-                .collect(Collectors.toList());
+                .stream().filter(k -> !k.equals(s.attacker)).collect(Collectors.toList());
 
         int perPage = 14;
         int pages = Math.max(1, (int)Math.ceil(all.size() / (double)perPage));
@@ -104,7 +100,7 @@ public final class WarDeclareWizard implements Listener {
             items.add(it);
         }
 
-        placeCenteredRow(inv, items, 1);                // ligne centrale
+        placeCenteredRow(inv, items, 1);
         if (items.size() > 7) placeCenteredRow(inv, items.subList(7, items.size()), 2);
 
         if (s.page > 0) inv.setItem(18, makeItem(glassRed(), ChatColor.YELLOW + "Page précédente"));
@@ -114,7 +110,6 @@ public final class WarDeclareWizard implements Listener {
         p.openInventory(inv);
     }
 
-    // Jours valides uniquement (fenêtre min..max), centrés, format JJ/MM/AAAA
     private static void openDayList(Player p, State s) {
         s.step = Step.DAY;
         Inventory inv = Bukkit.createInventory(null, 27, TITLE_DAY);
@@ -126,36 +121,34 @@ public final class WarDeclareWizard implements Listener {
             String label = (i==0 ? "Aujourd'hui" : (i==1 ? "Demain" : fmtDateFR(d)));
             items.add(makeItem(Material.CLOCK, ChatColor.AQUA + label, ChatColor.GRAY + "Date: " + fmtDateFR(d)));
         }
-        if (items.isEmpty()) { p.sendMessage(ChatColor.RED + "Aucune date disponible."); cleanup(p); return; }
+        if (items.isEmpty()) { ChatUtil.sendWarMsg(p, ChatColor.RED + "Aucune date disponible."); cleanup(p); return; }
 
         placeCenteredRows(inv, items, 1);
         inv.setItem(9, makeItem(glassRed(), ChatColor.RED + "Annuler"));
         p.openInventory(inv);
     }
 
-    // Heures valides uniquement, inventaire 27, Annuler slot 26, labels "Xh"
     private static void openHourList(Player p, State s) {
         s.step = Step.HOUR;
         Inventory inv = Bukkit.createInventory(null, 27, TITLE_HOUR);
 
         List<Integer> hours = validHoursFor(s.day);
-        if (hours.isEmpty()) { p.sendMessage(ChatColor.RED + "Aucune heure valide ce jour."); openDayList(p, s); return; }
+        if (hours.isEmpty()) { ChatUtil.sendWarMsg(p, ChatColor.RED + "Aucune heure valide ce jour."); openDayList(p, s); return; }
 
         List<ItemStack> items = new ArrayList<>();
         for (Integer h : hours) items.add(makeItem(Material.OAK_SIGN, ChatColor.AQUA + h.toString() + "h"));
         placeCenteredRows(inv, items, 0);
 
-        inv.setItem(26, makeItem(glassRed(), ChatColor.RED + "Annuler")); // case 27
+        inv.setItem(26, makeItem(glassRed(), ChatColor.RED + "Annuler"));
         p.openInventory(inv);
     }
 
-    // Minutes valides (*/5) uniquement, inventaire 27, labels "hh:mm"
     private static void openMinuteList(Player p, State s) {
         s.step = Step.MINUTE;
         Inventory inv = Bukkit.createInventory(null, 27, TITLE_MINUTE);
 
         List<Integer> mins = validMinutesFor(s.day, s.hour);
-        if (mins.isEmpty()) { p.sendMessage(ChatColor.RED + "Aucune minute valide pour " + s.hour + "h."); openHourList(p, s); return; }
+        if (mins.isEmpty()) { ChatUtil.sendWarMsg(p, ChatColor.RED + "Aucune minute valide pour " + s.hour + "h."); openHourList(p, s); return; }
 
         List<ItemStack> items = new ArrayList<>();
         for (int m : mins) items.add(makeItem(Material.MAP, ChatColor.AQUA + fmtHHMM(s.hour, m)));
@@ -165,7 +158,6 @@ public final class WarDeclareWizard implements Listener {
         p.openInventory(inv);
     }
 
-    // Confirmations génériques (écart 2 : 11/13/15)
     private static void openChoiceConfirm(Player p, State s, ItemStack choice, String title) {
         Inventory inv = Bukkit.createInventory(null, 27, title);
         inv.setItem(SLOT_RED_DEFAULT,   makeItem(glassRed(), ChatColor.RED + "Annuler"));
@@ -184,11 +176,10 @@ public final class WarDeclareWizard implements Listener {
         openChoiceConfirm(p, s, choice, ChatColor.DARK_GREEN + "Confirmer le royaume");
     }
 
-    // Confirmation du jour : bouton Annuler à 3 cases du centre (10/13/16)
     private static void openConfirmDay(Player p, State s, LocalDate d) {
         Inventory inv = Bukkit.createInventory(null, 27, ChatColor.DARK_GREEN + "Confirmer le jour");
         ItemStack choice = makeItem(Material.CLOCK, ChatColor.AQUA + fmtDateFR(d),
-                ChatColor.GRAY + "Jour sélectionné", ChatColor.DARK_GRAY + fmtDateFR(d)); // date en bas
+                ChatColor.GRAY + "Jour sélectionné", ChatColor.DARK_GRAY + fmtDateFR(d));
 
         inv.setItem(10, makeItem(glassRed(), ChatColor.RED + "Annuler"));
         inv.setItem(13, choice);
@@ -209,14 +200,14 @@ public final class WarDeclareWizard implements Listener {
     }
 
     private static void openFinalConfirm(Player p, State s) {
-        String sum1 = ChatColor.GOLD + "Royaume: " + ChatColor.AQUA + s.defender.getName();
+        String sum1 = ChatColor.GOLD + "Royaume: " + ChatColor.AQUA + ChatUtil.kingdomName(s.defender);
         String sum2 = ChatColor.GOLD + "Jour: " + ChatColor.AQUA + fmtDateFR(s.day);
         String sum3 = ChatColor.GOLD + "Heure: " + ChatColor.AQUA + fmtHHMM(s.hour, s.minute);
         ItemStack paper = makeItem(Material.PAPER, ChatColor.RED + "Déclaration de guerre", sum1, sum2, sum3);
         openChoiceConfirm(p, s, paper, TITLE_CONFIRM);
     }
 
-    // ===== EVENTS =====
+    // ----------------- EVENTS -----------------
     @EventHandler
     public void onClick(InventoryClickEvent e) {
         if (!(e.getWhoClicked() instanceof Player)) return;
@@ -231,10 +222,8 @@ public final class WarDeclareWizard implements Listener {
         ItemStack it = e.getCurrentItem();
         if (it == null || it.getType() == Material.AIR) return;
 
-        // Annuler global
-        if (isCancel(it)) { cleanup(p); p.closeInventory(); p.sendMessage(ChatColor.RED + "Déclaration annulée."); return; }
+        if (isCancel(it)) { cleanup(p); p.closeInventory(); ChatUtil.sendWarMsg(p, ChatColor.RED + "Déclaration annulée."); return; }
 
-        // Royaumes (pagination + choix)
         if (title.startsWith(TITLE_KINGDOMS)) {
             if (it.getType() == glassRed() && e.getSlot() == 18 && s.page > 0) { s.page--; openKingdomList(p, s); return; }
             if (it.getType() == glassGreen() && e.getSlot() == 26) { s.page++; openKingdomList(p, s); return; }
@@ -245,7 +234,7 @@ public final class WarDeclareWizard implements Listener {
                 Kingdom k = KingdomsManager.getKingdomByName(name);
                 if (k != null) {
                     if (k.equals(s.attacker)) {
-                        p.sendMessage(ChatColor.RED + "Vous ne pouvez pas déclarer la guerre à votre propre royaume.");
+                        ChatUtil.sendWarMsg(p, ChatColor.RED + "Vous ne pouvez pas déclarer la guerre à votre propre royaume.");
                         openKingdomList(p, s);
                         return;
                     }
@@ -256,13 +245,11 @@ public final class WarDeclareWizard implements Listener {
             }
         }
 
-        // Confirm royaume
         if (title.contains("Confirmer le royaume")) {
             if (e.getSlot() == SLOT_GREEN_DEFAULT) { openDayList(p, s); return; }
             if (e.getSlot() == SLOT_RED_DEFAULT)   { openKingdomList(p, s); return; }
         }
 
-        // Jours
         if (title.equals(TITLE_DAY)) {
             if (it.getType() == Material.CLOCK) {
                 String main = ChatColor.stripColor(it.getItemMeta().getDisplayName());
@@ -280,10 +267,9 @@ public final class WarDeclareWizard implements Listener {
             if (e.getSlot() == 10) { openDayList(p, s); return; }
         }
 
-        // Heures
         if (title.equals(TITLE_HOUR)) {
-            if (e.getSlot() == 26) { cleanup(p); p.closeInventory(); p.sendMessage(ChatColor.RED + "Déclaration annulée."); return; }
-            String label = ChatColor.stripColor(it.getItemMeta().getDisplayName()); // "13h"
+            if (e.getSlot() == 26) { cleanup(p); p.closeInventory(); ChatUtil.sendWarMsg(p, ChatColor.RED + "Déclaration annulée."); return; }
+            String label = ChatColor.stripColor(it.getItemMeta().getDisplayName());
             if (label.endsWith("h")) label = label.substring(0, label.length()-1);
             try { s.hour = Integer.parseInt(label); openConfirmHour(p, s); } catch (NumberFormatException ignored) {}
             return;
@@ -293,9 +279,8 @@ public final class WarDeclareWizard implements Listener {
             if (e.getSlot() == SLOT_RED_DEFAULT)   { openHourList(p, s); return; }
         }
 
-        // Minutes
         if (title.equals(TITLE_MINUTE)) {
-            String label = ChatColor.stripColor(it.getItemMeta().getDisplayName()); // "hh:mm"
+            String label = ChatColor.stripColor(it.getItemMeta().getDisplayName());
             int h = Integer.parseInt(label.substring(0, label.indexOf(":")));
             int m = Integer.parseInt(label.substring(label.indexOf(":")+1));
             s.hour = h; s.minute = m;
@@ -307,43 +292,42 @@ public final class WarDeclareWizard implements Listener {
             if (e.getSlot() == SLOT_RED_DEFAULT)   { openMinuteList(p, s); return; }
         }
 
-        // Dernier écran (messages identiques à DeclareWarCommand)
         if (title.equals(TITLE_CONFIRM)) {
             if (e.getSlot() == SLOT_GREEN_DEFAULT) {
                 if (s.defender == null || s.day == null || s.hour == null || s.minute == null) {
-                    p.sendMessage(ChatColor.RED + "Sélection incomplète.");
-                    return;
+                    ChatUtil.sendWarMsg(p, ChatColor.RED + "Sélection incomplète."); return;
                 }
 
                 List<com.kingdomspvp.kingdoms.model.Claim> attackable =
                         ClaimManager.getDefenderClaimsAdjacentToAttacker(s.defender.getName(), s.attacker.getName());
                 if (attackable.isEmpty()) {
-                    p.sendMessage(ChatColor.RED + "Aucune frontière commune : votre royaume n'a pas de claim adjacent à "
-                            + s.defender.getName() + ". Déclaration refusée.");
+                    ChatUtil.sendWarMsg(p, ChatColor.RED + "Aucune frontière commune : votre royaume n'a pas de claim adjacent à "
+                            + ChatUtil.kingdomName(s.defender) + ChatColor.RED + ". Déclaration refusée.");
                     return;
                 }
 
                 LocalDateTime when = s.when();
                 LocalDateTime now  = LocalDateTime.now();
                 if (when.isBefore(now.plus(WarManager.MIN_TIME_BEFORE_WAR))) {
-                    p.sendMessage(ChatColor.RED + "Vous devez déclarer la guerre au moins "
+                    ChatUtil.sendWarMsg(p, ChatColor.RED + "Vous devez déclarer la guerre au moins "
                             + WarManager.MIN_TIME_BEFORE_WAR.toMinutes() + " minutes à l'avance.");
                     return;
                 }
                 if (when.isAfter(now.plus(WarManager.MAX_TIME_BEFORE_WAR))) {
-                    p.sendMessage(ChatColor.RED + "Vous ne pouvez pas déclarer la guerre plus de "
+                    ChatUtil.sendWarMsg(p, ChatColor.RED + "Vous ne pouvez pas déclarer la guerre plus de "
                             + WarManager.MAX_TIME_BEFORE_WAR.toMinutes() + " minutes à l'avance.");
                     return;
                 }
                 if (WarManager.hasPendingWar(s.attacker, s.defender)) {
-                    p.sendMessage(ChatColor.RED + "Il y a déjà une guerre programmée entre "
-                            + s.attacker.getName() + " et " + s.defender.getName() + ".");
+                    ChatUtil.sendWarMsg(p, ChatColor.RED + "Il y a déjà une guerre programmée entre "
+                            + ChatUtil.kingdomName(s.attacker) + ChatColor.RED + " et " + ChatUtil.kingdomName(s.defender) + ChatColor.RED + ".");
                     return;
                 }
 
                 War w = WarManager.declareWar(s.defender, s.attacker, when.toString(), attackable);
                 WarManager.sendMessagetoPlayersOfKingdoms(w);
-                p.sendMessage(ChatColor.GREEN + "Guerre déclarée contre " + ChatColor.AQUA + s.defender.getName()
+
+                ChatUtil.sendWarMsg(p, ChatColor.GREEN + "Guerre déclarée contre " + ChatColor.AQUA + ChatUtil.kingdomName(s.defender)
                         + ChatColor.GREEN + " le " + ChatColor.AQUA + fmtDateFR(when.toLocalDate())
                         + ChatColor.GREEN + " à " + ChatColor.AQUA + fmtHHMM(when.getHour(), when.getMinute()));
                 cleanup(p); p.closeInventory(); return;
@@ -354,23 +338,20 @@ public final class WarDeclareWizard implements Listener {
 
     @EventHandler
     public void onClose(InventoryCloseEvent e) {
-        // pas de cleanup forcé (permet de revenir si réouvert immédiatement)
+        // pas de cleanup forcé
     }
 
-    // ===== FENÊTRE TEMPORELLE & FILTRAGES =====
-
+    // ----------------- FENÊTRE & FILTRES -----------------
     private static LocalDateTime windowStart() { return LocalDateTime.now().plus(WarManager.MIN_TIME_BEFORE_WAR); }
     private static LocalDateTime windowEnd()   { return LocalDateTime.now().plus(WarManager.MAX_TIME_BEFORE_WAR); }
     private static boolean withinWindow(LocalDateTime dt) {
         return !dt.isBefore(windowStart()) && !dt.isAfter(windowEnd());
     }
-
     private static boolean dayHasAnyValidTime(LocalDate day) {
         LocalDateTime start = day.atStartOfDay();
         LocalDateTime end   = day.atTime(23, 59);
         return !end.isBefore(windowStart()) && !start.isAfter(windowEnd());
     }
-
     private static List<Integer> validHoursFor(LocalDate day) {
         List<Integer> hours = new ArrayList<>();
         for (int h = 0; h < 24; h++) {
@@ -382,7 +363,6 @@ public final class WarDeclareWizard implements Listener {
         }
         return hours;
     }
-
     private static List<Integer> validMinutesFor(LocalDate day, int hour) {
         List<Integer> mins = new ArrayList<>();
         for (int m = 0; m < 60; m += 5) {
@@ -391,13 +371,11 @@ public final class WarDeclareWizard implements Listener {
         return mins;
     }
 
-    // ===== UTILS UI =====
-
+    // ----------------- UI UTILS -----------------
     private static boolean isOurTitle(String t) {
         return t != null && (t.startsWith(TITLE_KINGDOMS) || t.equals(TITLE_DAY) || t.equals(TITLE_HOUR)
                 || t.equals(TITLE_MINUTE) || t.contains("Confirmer") || t.equals(TITLE_CONFIRM));
     }
-
     private static void placeCenteredRow(Inventory inv, List<ItemStack> items, int row) {
         if (items == null || items.isEmpty()) return;
         int width = 9;
@@ -406,7 +384,6 @@ public final class WarDeclareWizard implements Listener {
         int startCol = (width - count) / 2;
         for (int i = 0; i < count; i++) inv.setItem(rowStart + startCol + i, items.get(i));
     }
-
     private static void placeCenteredRows(Inventory inv, List<ItemStack> items, int startRow) {
         int width = 9, row = startRow, idx = 0;
         while (idx < items.size() && row < 3) {
@@ -418,7 +395,6 @@ public final class WarDeclareWizard implements Listener {
             idx += take; row++;
         }
     }
-
     private static ItemStack makeItem(Material mat, String name, String... lore) {
         ItemStack it = new ItemStack(mat);
         ItemMeta m = it.getItemMeta();
@@ -428,23 +404,19 @@ public final class WarDeclareWizard implements Listener {
         it.setItemMeta(m);
         return it;
     }
-
     private static String fmtDateFR(LocalDate d) {
         int j = d.getDayOfMonth(), m = d.getMonthValue(), a = d.getYear();
         return String.format("%02d/%02d/%04d", j, m, a);
     }
-
     private static LocalDate parseFR(String label) {
         String[] p = label.split("/");
         return LocalDate.of(Integer.parseInt(p[2]), Integer.parseInt(p[1]), Integer.parseInt(p[0]));
     }
-
     private static String fmtHHMM(Integer h, Integer m) {
         int hh = (h == null ? 0 : h);
         int mm = (m == null ? 0 : m);
         return String.format("%02d:%02d", hh, mm);
     }
-
     private static Material woolOf(ChatColor c) {
         if (c == null) return Material.WHITE_WOOL;
         switch (c) {
@@ -466,16 +438,13 @@ public final class WarDeclareWizard implements Listener {
             default: return Material.WHITE_WOOL;
         }
     }
-
     private static Material glassRed()   { return Material.RED_STAINED_GLASS; }
     private static Material glassGreen() { return Material.GREEN_STAINED_GLASS; }
-
     private static boolean isCancel(ItemStack it) {
         return (it.getType() == glassRed())
                 && it.hasItemMeta() && it.getItemMeta().hasDisplayName()
                 && ChatColor.stripColor(it.getItemMeta().getDisplayName()).equalsIgnoreCase("Annuler");
     }
-
     private static void cleanup(Player p) {
         if (p == null) return;
         STATES.remove(p.getUniqueId());

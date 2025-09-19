@@ -40,6 +40,7 @@ public class KingdomCommandExecutor implements CommandExecutor {
         this.rootCommand.addSubCommand(new ClaimsVizCommand(plugin));
         this.rootCommand.addSubCommand(new TpToWarHiddenCommand());
         this.rootCommand.addSubCommand(new SpawnPointCommand());
+        this.rootCommand.addSubCommand(new WarTestCommand());
     }
 
     @Override

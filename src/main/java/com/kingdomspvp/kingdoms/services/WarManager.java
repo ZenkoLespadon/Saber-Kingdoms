@@ -42,23 +42,21 @@ import static com.kingdomspvp.kingdoms.services.WarRuntime.stopAll;
 public class WarManager {
 
 /*
-mettre la couleur dans le tab et au dessus de leur tete (pseudo)
-et au dessus de la tête des joueurs
+!!!!!! Mettre [WAR] devant tous les messages liées aux guerres pour éviter les confusions
+!!!! mettre la couleur dans le tab et au dessus de leur tete (pseudo)
+!!!! et au dessus de la tête des joueurs
+!! faire un pnj qui ouvre une interface pour rejoindre un royaume
+!! commande pour changer les joueurs de royaume
 
-!!!!!! mettre la pomme cheat 1.20
-
-
-faire un pnj qui ouvre une interface pour rejoindre un royaume
-commande pour changer les joueurs de royaume
+mettre la pomme cheat 1.20
 
 c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules (vérifier si c'est tous les packs ou juste le sien)
 
-!! Mettre [WAR] devant tous les messages liées aux guerres pour éviter les confusions
-!! Enlever le scoreboard quand le serveur reload ou redémarre
+Faire le listener pour le pvp
  */
 
-    public static final Duration MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
-    public static final Duration MAX_TIME_BEFORE_WAR = Duration.ofHours(48);
+    public static Duration MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
+    public static Duration MAX_TIME_BEFORE_WAR = Duration.ofHours(48);
 
     /** Délai avant le début pour afficher le bouton d'inscription. */
     public static Duration JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(30); // ex. passez à 5 min en beta
@@ -83,9 +81,8 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
     /** Tâches de time-out par guerre. */
     private static final Map<String, Integer> detectionTimeoutTasks = new java.util.concurrent.ConcurrentHashMap<>();
 
-    // ------------------------------------------------------------------------
-    // Chargement & planification
-    // ------------------------------------------------------------------------
+    private static boolean TEST_MODE = true;
+    public static boolean isTestMode() { return TEST_MODE; }
 
     public static void loadWars(Callback<Boolean> success) {
         warsJSON.load(success);
@@ -187,7 +184,7 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         long promptTicks = promptMillis / 50L;
         Bukkit.getScheduler().runTaskLater(
                 FactionsPlugin.getInstance(),
-                () -> sendJoinPrompt(w, ChatColor.GOLD + "La guerre contre le royaume " + ChatUtil.kingdomName(w.getDefenderKingdom()) + " commence dans 30 secondes ! "),
+                () -> sendJoinPrompt(w, ChatColor.GOLD + "La guerre contre le royaume " + ChatUtil.kingdomName(w.getDefenderKingdom()) + ChatColor.GOLD + " commence dans 30 secondes ! "),
                 promptTicks
         );
     }
@@ -195,25 +192,30 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
     private static void sendJoinPrompt(War w, String prefix) {
         String cmd = "/k _warjoin " + w.getId();
 
-        TextComponent msg = new TextComponent(prefix == null ? "" : prefix);
-        msg.setColor(ChatColor.GOLD);
+        // Préfixe [War] en legacy (non-cliquable)
+        BaseComponent[] prefixed = TextComponent.fromLegacyText(
+                ChatUtil.prefixWithWar(prefix == null ? "" : prefix)
+        );
+        TextComponent container = new TextComponent();
+        for (BaseComponent bc : prefixed) container.addExtra(bc);
 
+        // Bouton cliquable
         TextComponent button = new TextComponent("[CLIQUE POUR T'INSCRIRE]");
         button.setColor(ChatColor.GREEN);
         button.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd));
         button.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
                 new Text("S'inscrire à la guerre " + w.getId())));
-
-        msg.addExtra(button);
+        container.addExtra(button);
 
         for (Player p : Bukkit.getOnlinePlayers()) {
             Kingdom k = getPlayerKingdom(p);
             if (k == null) continue;
             if (k.equals(w.getAttackerKingdom()) || k.equals(w.getDefenderKingdom())) {
-                p.spigot().sendMessage(msg);
+                p.spigot().sendMessage(container);
             }
         }
     }
+
 
     // Java
     private static void startWar(War w) {
@@ -302,7 +304,6 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         if (added) {
             warsJSON.addWar(war);
 
-            // --- Annonce aux participants de la guerre ---
             int attackers = war.getAttackerPlayers().size();
             int defenders = war.getDefenderPlayers().size();
             boolean isAttacker = k.equals(war.getAttackerKingdom());
@@ -316,12 +317,17 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
                             + atkColor + attackers + org.bukkit.ChatColor.GOLD + " attaquants contre "
                             + defColor + defenders + org.bukkit.ChatColor.GOLD + " défenseurs.";
 
-            sendToRegisteredPlayers(war,
-                    net.md_5.bungee.api.chat.TextComponent.fromLegacyText(legacyMsg));
+            // ➜ Préfixe [War] pour le broadcast
+            legacyMsg = com.kingdomspvp.kingdoms.utils.ChatUtil.prefixWithWar(legacyMsg);
+            sendToRegisteredPlayers(war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(legacyMsg));
+
+            // ➜ Confirmation individuelle avec [War]
+            com.kingdomspvp.kingdoms.utils.ChatUtil.sendWarMsg(player, org.bukkit.ChatColor.GREEN + "Inscription enregistrée.");
         }
 
         return added;
     }
+
 
     private static Kingdom getPlayerKingdom(Player p) {
         FPlayer fp = FPlayers.getInstance().getByPlayer(p);
@@ -391,18 +397,19 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
             if (pk == null) continue;
 
             if (pk.equals(attacker)) {
-                p.sendMessage(
+                ChatUtil.sendWarMsg(p,
                         org.bukkit.ChatColor.GREEN + "⚔ Votre royaume attaque le royaume " + ChatUtil.kingdomName(defender)
                                 + org.bukkit.ChatColor.GREEN + " le " + org.bukkit.ChatColor.AQUA + dateStr
                                 + org.bukkit.ChatColor.GREEN + " à " + org.bukkit.ChatColor.AQUA + timeStr + org.bukkit.ChatColor.GREEN + "."
                 );
             } else if (pk.equals(defender)) {
-                p.sendMessage(
+                ChatUtil.sendWarMsg(p,
                         org.bukkit.ChatColor.RED + "⚠ Votre royaume est attaqué par le royaume " + ChatUtil.kingdomName(attacker)
                                 + org.bukkit.ChatColor.RED + " le " + org.bukkit.ChatColor.AQUA + dateStr
                                 + org.bukkit.ChatColor.RED + " à " + org.bukkit.ChatColor.AQUA + timeStr + org.bukkit.ChatColor.RED + "."
                 );
             }
+
 
         }
     }
@@ -420,15 +427,28 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
 
     public static BaseComponent[] buildWaitForAttackMessage(Kingdom defender) {
         String defName = ChatUtil.kingdomName(defender);
-        return TextComponent.fromLegacyText(ChatColor.GOLD + "Attaquez un claim du royaume " + defName + ChatColor.GOLD + " pour démarrer la guerre !");
+        String legacy = ChatUtil.prefixWithWar(ChatColor.GOLD + "Attaquez un claim du royaume " + defName + ChatColor.GOLD + " pour démarrer la guerre !");
+        return TextComponent.fromLegacyText(legacy);
     }
 
+
+
     public static BaseComponent[] buildTpToWarNowMessage(String warId) {
+        // Préfixe non-cliquable
+        BaseComponent[] prefix = TextComponent.fromLegacyText(ChatUtil.prefixWithWar(""));
+
+        // Bouton cliquable
         TextComponent btn = new TextComponent(ChatColor.GREEN + "[Cliquez ici pour vous téléporter à la guerre]");
         btn.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/k _tp_to_war " + warId));
         btn.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text("Rejoindre la guerre " + warId)));
-        return new BaseComponent[]{ btn };
+
+        // Concaténer
+        TextComponent all = new TextComponent();
+        for (BaseComponent bc : prefix) all.addExtra(bc);
+        all.addExtra(btn);
+        return new BaseComponent[]{ all };
     }
+
 
     public static void sendToAttackers(War w, BaseComponent[] comps) {
         for (UUID id : w.getAttackerPlayers()) {
@@ -676,12 +696,13 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         }
     }
 
-    // Java
     public static void sendWarStartMessage(War war) {
         String defName = ChatUtil.kingdomName(war.getDefenderKingdom());
-        String msg = org.bukkit.ChatColor.GOLD + "La guerre contre le Royaume " + defName + org.bukkit.ChatColor.GOLD + " commence !";
+        String msg = ChatUtil.prefixWithWar(org.bukkit.ChatColor.GOLD + "La guerre contre le Royaume " + defName + org.bukkit.ChatColor.GOLD + " commence !");
         sendToRegisteredPlayers(war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(msg));
     }
+
+
 
     public static void clearSidebarFor(org.bukkit.entity.Player p) {
         if (p == null) return;
@@ -715,6 +736,22 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
             clearSidebarFor(p); // au cas où des objectifs aient survécu à un reload
         }
+    }
+
+    public static void enableTestMode() {
+        TEST_MODE = true;
+        MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
+        MAX_TIME_BEFORE_WAR = Duration.ofMinutes(20);
+        JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(30);
+        Bukkit.getLogger().info("[WarManager] TEST MODE ON: window 1–20 min, join prompt 30s.");
+    }
+
+    public static void disableTestMode() {
+        TEST_MODE = false;
+        MIN_TIME_BEFORE_WAR = Duration.ofHours(1);
+        MAX_TIME_BEFORE_WAR = Duration.ofHours(24);
+        JOIN_PROMPT_LEAD_TIME = Duration.ofMinutes(5);
+        Bukkit.getLogger().info("[WarManager] TEST MODE OFF: window 1–24 h, join prompt 5m.");
     }
 
 

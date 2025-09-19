@@ -5,6 +5,7 @@ import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
+import com.kingdomspvp.kingdoms.utils.ChatUtil;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import org.bukkit.ChatColor;
@@ -23,7 +24,7 @@ public class WarHiddenJoinCommand extends KingdomCommand {
         String warId = context.args.get(0);
         boolean ok = WarManager.registerPlayerIfEligible(warId, context.player);
         if (ok) {
-            context.msg(ChatColor.GREEN + "Inscription enregistrée.");
+            ChatUtil.sendWarMsg(context.player, ChatColor.GREEN + "Inscription enregistrée.");
             War war = WarManager.getWar(warId);
             context.player.spigot().sendMessage(WarManager.buildParticipantsMessage(war));
 
