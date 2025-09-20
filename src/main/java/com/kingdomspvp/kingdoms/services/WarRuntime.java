@@ -106,6 +106,33 @@ public final class WarRuntime {
         for (WarSession s : SESSIONS.values()) s.detachUI(id); // évite les refs fantômes
     }
 
+    // WarRuntime.java
+    public static void recordKill(java.util.UUID killer, java.util.UUID victim) {
+        for (WarSession s : SESSIONS.values()) {
+            War w = s.war;
+            boolean kIn = w.getAttackerPlayers().contains(killer) || w.getDefenderPlayers().contains(killer);
+            boolean vIn = w.getAttackerPlayers().contains(victim) || w.getDefenderPlayers().contains(victim);
+            if (!kIn || !vIn || w.getStatus() != WarStatus.INPROGRESS) continue;
+
+            // Opposants ?
+            boolean killerIsAtk = w.getAttackerPlayers().contains(killer);
+            boolean victimIsAtk = w.getAttackerPlayers().contains(victim);
+            if (killerIsAtk == victimIsAtk) continue; // même camp -> ignore
+
+            s.onKill(killer, victim);
+        }
+    }
+
+    public static void recordAssist(java.util.UUID assister) {
+        for (WarSession s : SESSIONS.values()) {
+            War w = s.war;
+            boolean in = w.getAttackerPlayers().contains(assister) || w.getDefenderPlayers().contains(assister);
+            if (!in || w.getStatus() != WarStatus.INPROGRESS) continue;
+            s.onAssist(assister);
+        }
+    }
+
+
 
     // ===================== SESSION =====================
     private static final class WarSession {
