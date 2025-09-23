@@ -1,5 +1,6 @@
 package com.kingdomspvp.kingdoms.services;
 
+import com.kingdomspvp.kingdoms.listeners.TablistKingdomColors;
 import com.kingdomspvp.kingdoms.utils.Callback;
 import com.kingdomspvp.kingdoms.utils.KingdomsJSON;
 import com.kingdomspvp.kingdoms.model.Kingdom;
@@ -42,6 +43,9 @@ public class KingdomsManager {
 
     public static void addPlayerToDefaultFactionOfKingdom(Player player, Kingdom kingdom) {
         // 1) On essaie par ID
+
+        TablistKingdomColors.refreshAll();
+
         Faction defaultFaction = Factions.getInstance().getFactionById(kingdom.getDefaultFactionId());
         // 2) Si introuvable, on retente par tag "Paysans_<Royaume>"
         if (defaultFaction == null) {

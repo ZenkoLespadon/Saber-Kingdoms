@@ -59,7 +59,7 @@ Faire le listener pour le pvp
     public static Duration MAX_TIME_BEFORE_WAR = Duration.ofHours(48);
 
     /** Délai avant le début pour afficher le bouton d'inscription. */
-    public static Duration JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(30); // ex. passez à 5 min en beta
+    public static Duration JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(60); // ex. passez à 5 min en beta
 
     /** Taille de claim (en blocs), reprise du ClaimManager. */
     public static final int CLAIM_SIZE = ClaimManager.CLAIM_SIZE;
@@ -184,7 +184,7 @@ Faire le listener pour le pvp
         long promptTicks = promptMillis / 50L;
         Bukkit.getScheduler().runTaskLater(
                 FactionsPlugin.getInstance(),
-                () -> sendJoinPrompt(w, ChatColor.GOLD + "La guerre contre le royaume " + ChatUtil.kingdomName(w.getDefenderKingdom()) + ChatColor.GOLD + " commence dans 30 secondes ! "),
+                () -> sendJoinPrompt(w, ChatColor.GOLD + "La guerre contre le royaume " + ChatUtil.kingdomName(w.getDefenderKingdom()) + ChatColor.GOLD + " commence dans 60 secondes ! "),
                 promptTicks
         );
     }

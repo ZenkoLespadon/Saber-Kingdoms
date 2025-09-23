@@ -282,6 +282,12 @@ public class FactionsPlugin extends MPlugin {
             Bukkit.getPluginManager().registerEvents(new WarJoinAnnounceListener(), this);
             Bukkit.getPluginManager().registerEvents(new WarUIReconnectListener(), this);
             getServer().getPluginManager().registerEvents(new WarKDAListener(), this);
+            getServer().getPluginManager().registerEvents(new KingdomChatColorListener(), this);
+            getServer().getPluginManager().registerEvents(new TablistKingdomColors(this, 1200L), this);
+
+
+            TablistKingdomColors.refreshAll();
+
 
             getCommand("k").setExecutor(new KingdomCommandExecutor(FactionsPlugin.this));
         });

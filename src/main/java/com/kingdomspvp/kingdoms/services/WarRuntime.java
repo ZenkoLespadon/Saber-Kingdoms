@@ -23,14 +23,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class WarRuntime {
 
     // Réglages
-    public static int WAR_DURATION_SECONDS = 5 * 60; // METTRE A 10 * 60 EN PROD
+    public static int WAR_DURATION_SECONDS = 10 * 60; // METTRE A 10 * 60 EN PROD
 
     // Réglages des rounds
     private static final int MAX_ROUNDS = 4;
     private static final double ROUND_GAIN_FACTOR = 0.80; // -20% de gains par round
 
     // cible à 80% du score both-full → ~8:00 pour 10:00 en 1v1
-    private static final double TARGET_FRACTION   = 0.80;
+    private static final double TARGET_FRACTION   = 0.70;
 
     // P0=0.08, 10 min = 600s → échelle pour viser 1000 points en 10 min (1v1, U=1)
     private static final double TARGET_AT_10_MIN  = 1000.0;
