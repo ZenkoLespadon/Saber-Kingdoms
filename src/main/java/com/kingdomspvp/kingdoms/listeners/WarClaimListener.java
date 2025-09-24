@@ -32,9 +32,9 @@ public class WarClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onMove(PlayerMoveEvent e) {
-        // traiter seulement aux changements de cellule (CLAIM_SIZE=128 -> >>7)
-        if ((e.getFrom().getBlockX() >> 7) == (e.getTo().getBlockX() >> 7)
-                && (e.getFrom().getBlockZ() >> 7) == (e.getTo().getBlockZ() >> 7)) {
+        // CLAIM_SIZE = 64 → >> 6
+        if ((e.getFrom().getBlockX() >> 6) == (e.getTo().getBlockX() >> 6)
+                && (e.getFrom().getBlockZ() >> 6) == (e.getTo().getBlockZ() >> 6)) {
             return;
         }
 
@@ -42,7 +42,7 @@ public class WarClaimListener implements Listener {
         FPlayer fp = FPlayers.getInstance().getByPlayer(p);
         if (fp == null || fp.getFaction() == null || fp.getFaction().isWilderness()) return;
 
-        // -------- 1) Détection du premier assaut (comportement existant) --------
+        // 1) Détection premier assaut (fenêtre)
         if (!activeDetectionWars.isEmpty()) {
             Claim to = ClaimManager.getClaimByCoordinates(e.getTo().getBlockX(), e.getTo().getBlockZ());
             if (to != null) {
@@ -61,41 +61,36 @@ public class WarClaimListener implements Listener {
             }
         }
 
-        // -------- 2) Annonces entrée/sortie du claim attaqué pendant la guerre --------
+        // 2) Messages entrer/sortir du claim attaqué (pendant combat)
         var playerKingdom = KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
         if (playerKingdom == null) return;
 
-        // On parcourt toutes les guerres en cours (qu’elles soient en fenêtre de détection ou en combat)
         for (War w : WarManager.getWars().values()) {
             if (w.getStatus() != WarStatus.INPROGRESS || !w.hasCombatStarted()) continue;
 
             Claim attacked = WarManager.getAttackedClaim(w);
             if (attacked == null) continue;
 
-            // Filtrer aux joueurs des royaumes concernés
             boolean isConcerned = playerKingdom.equals(w.getAttackerKingdom()) || playerKingdom.equals(w.getDefenderKingdom());
             if (!isConcerned) continue;
 
-            // Calcul état "dans le claim attaqué" AVANT/APRÈS
             boolean wasInside = isInClaim(e.getFrom().getBlockX(), e.getFrom().getBlockZ(), attacked);
             boolean nowInside = isInClaim(e.getTo().getBlockX(),   e.getTo().getBlockZ(),   attacked);
-
             if (wasInside == nowInside) continue;
 
             insideAttackedByWar.computeIfAbsent(w.getId(), k -> ConcurrentHashMap.newKeySet());
             Set<UUID> set = insideAttackedByWar.get(w.getId());
-
-            ChatUtil.sendWarMsg(p, getMessageOnMove(w, !wasInside && nowInside));
+            // message
+            p.sendMessage(getMessageOnMove(w, !wasInside && nowInside));
         }
     }
 
-
-
     private static String getMessageOnMove(War war, boolean entering) {
-        return entering
-                ? ChatColor.GOLD + "Vous entrez dans le claim du Royaume " + war.getDefenderKingdom().getColor() + war.getDefenderKingdom().getName() + "."
-                : ChatColor.GOLD + "Vous sortez du claim du Royaume " + war.getDefenderKingdom().getColor() + war.getDefenderKingdom().getName() + ".";
+        return ChatUtil.prefixWithWar(entering
+                ? ChatColor.GOLD + "Vous entrez dans le claim du Royaume " + ChatUtil.kingdomName(war.getDefenderKingdom()) + "."
+                : ChatColor.GOLD + "Vous sortez du claim du Royaume " + ChatUtil.kingdomName(war.getDefenderKingdom()) + ".");
     }
+
 
     private static boolean isInClaim(int blockX, int blockZ, Claim c) {
         Claim here = ClaimManager.getClaimByCoordinates(blockX, blockZ);

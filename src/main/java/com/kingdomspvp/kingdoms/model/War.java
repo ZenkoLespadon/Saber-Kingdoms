@@ -16,6 +16,8 @@ public class War {
     private final Set<UUID> attackerPlayers = new HashSet<>();
     private final Set<UUID> defenderPlayers = new HashSet<>();
 
+    private Kingdom winner = null;
+
     public boolean hasCombatStarted() { return combatStarted; }
     private Integer attackedGridX;
     private Integer attackedGridZ;
@@ -119,6 +121,14 @@ public class War {
         this.combatStarted = false;          // ou setCombatStarted(false) si tu as un setter
         this.attackedGridX = null;           // si champs Integer
         this.attackedGridZ = null;
+    }
+
+    public Kingdom getWinner() {
+        return winner;
+    }
+
+    public void setWinner(Kingdom winner) {
+        this.winner = winner;
     }
 
 }

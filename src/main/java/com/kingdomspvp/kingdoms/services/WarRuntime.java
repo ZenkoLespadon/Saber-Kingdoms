@@ -23,11 +23,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class WarRuntime {
 
     // Réglages
-    public static int WAR_DURATION_SECONDS = 10 * 60; // METTRE A 10 * 60 EN PROD
+    public static int WAR_DURATION_SECONDS = 150; // 2min30
 
     // Réglages des rounds
     private static final int MAX_ROUNDS = 4;
-    private static final double ROUND_GAIN_FACTOR = 0.80; // -20% de gains par round
+    private static final double ROUND_GAIN_FACTOR = 0.87; // -13% de gains par round
 
     // cible à 80% du score both-full → ~8:00 pour 10:00 en 1v1
     private static final double TARGET_FRACTION   = 0.70;
@@ -132,7 +132,14 @@ public final class WarRuntime {
         }
     }
 
-
+    public static boolean forceEnd(String warId, boolean attackersWin) {
+        if (warId == null) return false;
+        War w = WarManager.getWar(warId);
+        if (w == null) return false;
+        WarSession s = getOrCreate(w);
+        s.adminForceEnd(attackersWin);
+        return true;
+    }
 
     // ===================== SESSION =====================
     private static final class WarSession {
@@ -182,7 +189,7 @@ public final class WarRuntime {
 
         void onFirstClaimAttacked(Claim c) {
             this.attackedClaim = c;
-            this.seconds = WAR_DURATION_SECONDS;
+            this.seconds = WAR_DURATION_SECONDS; // 150
             this.combatActive = true;
             this.targetPoints = SCALE * TARGET_FRACTION * 0.5 * P0 * U * WAR_DURATION_SECONDS;
             this.pointsAttackers = 0.0;
@@ -228,23 +235,30 @@ public final class WarRuntime {
             if (percent < 0.0) percent = 0.0;
             if (percent > 100.0) percent = 100.0;
 
-            String atkName = ChatUtil.kingdomName(war.getAttackerKingdom());
-            String defName = ChatUtil.kingdomName(war.getDefenderKingdom());
+            String atkName = com.kingdomspvp.kingdoms.utils.ChatUtil.kingdomName(war.getAttackerKingdom());
+            String defName = com.kingdomspvp.kingdoms.utils.ChatUtil.kingdomName(war.getDefenderKingdom());
             String roundMsg;
             if (attackersWon) {
-                roundMsg = org.bukkit.ChatColor.GOLD + "Fin du round " + roundIndex + " — "
-                        + org.bukkit.ChatColor.GREEN + "Victoire des attaquants ( " + atkName + " ) "
-                        + org.bukkit.ChatColor.GRAY + "— Pourcentage capture: "
-                        + org.bukkit.ChatColor.AQUA + String.format(java.util.Locale.US, "%.1f%%", percent)
-                        + (attackersInstantWin ? org.bukkit.ChatColor.DARK_GRAY + " (objectif atteint)" : "");
+                roundMsg = com.kingdomspvp.kingdoms.utils.ChatUtil.prefixWithWar(
+                        org.bukkit.ChatColor.GOLD + "Fin du round " + roundIndex + " — "
+                                + org.bukkit.ChatColor.GREEN + "Victoire des attaquants ( " + atkName + " ) "
+                                + org.bukkit.ChatColor.GRAY + "— Pourcentage capture: "
+                                + org.bukkit.ChatColor.AQUA + String.format(java.util.Locale.US, "%.1f%%", percent)
+                                + (attackersInstantWin ? org.bukkit.ChatColor.DARK_GRAY + " (objectif atteint)" : "")
+                );
             } else {
-                roundMsg = org.bukkit.ChatColor.GOLD + "Fin du round " + roundIndex + " — "
-                        + org.bukkit.ChatColor.RED + "Victoire des défenseurs (" + defName + ") "
-                        + org.bukkit.ChatColor.GRAY + "— Pourcentage capture: "
-                        + org.bukkit.ChatColor.AQUA + String.format(java.util.Locale.US, "%.1f%%", percent);
+                roundMsg = com.kingdomspvp.kingdoms.utils.ChatUtil.prefixWithWar(
+                        org.bukkit.ChatColor.GOLD + "Fin du round " + roundIndex + " — "
+                                + org.bukkit.ChatColor.RED + "Victoire des défenseurs (" + defName + ") "
+                                + org.bukkit.ChatColor.GRAY + "— Pourcentage capture: "
+                                + org.bukkit.ChatColor.AQUA + String.format(java.util.Locale.US, "%.1f%%", percent)
+                );
             }
 
-            WarManager.sendToRegisteredPlayers(war, TextComponent.fromLegacyText(ChatUtil.prefixWithWar(roundMsg)));
+            WarManager.sendToRegisteredPlayers(
+                    war,
+                    net.md_5.bungee.api.chat.TextComponent.fromLegacyText(roundMsg)
+            );
 
             if (attackersWon && attackedClaim != null) {
                 ClaimManager.transferClaimToKingdom(attackedClaim, war.getAttackerKingdom().getName());
@@ -254,7 +268,7 @@ public final class WarRuntime {
 
             if (attackersWon && roundIndex < MAX_ROUNDS) {
                 roundIndex++;
-                roundGainMultiplier *= ROUND_GAIN_FACTOR;
+                roundGainMultiplier *= ROUND_GAIN_FACTOR; // ex: 1.00 → 0.95 → 0.9025 → …
 
                 this.combatActive = false;
                 this.attackedClaim = null;
@@ -263,15 +277,15 @@ public final class WarRuntime {
 
                 WarManager.prepareNextRound(war, true);
 
-                WarManager.sendToAttackers(war, ChatUtil.prefixWithWar(
-                        org.bukkit.ChatColor.GOLD + "Round " + roundIndex + " — Attaquez un nouveau claim pour commencer !"));
-                WarManager.sendToDefenders(war, ChatUtil.prefixWithWar(
-                        org.bukkit.ChatColor.RED + "Round " + roundIndex + " — Préparez la défense."));
+                WarManager.sendToAttackers(war,
+                        org.bukkit.ChatColor.GOLD + "Round " + roundIndex + " — Attaquez un nouveau claim pour commencer !");
+                WarManager.sendToDefenders(war,
+                        org.bukkit.ChatColor.RED + "Round " + roundIndex + " — Préparez la défense.");
 
                 return;
             }
 
-            war.setStatus(WarStatus.ENDED);
+            war.setStatus(com.kingdomspvp.kingdoms.model.WarStatus.ENDED);
             WarManager.getWars().put(war.getId(), war);
             stop(false);
         }
@@ -333,7 +347,7 @@ public final class WarRuntime {
             if (inDetectionWindow && !combatActive) {
                 for (var entry : ui.entrySet()) {
                     UUID id = entry.getKey();
-                    Player p = Bukkit.getPlayer(id);
+                    Player p = org.bukkit.Bukkit.getPlayer(id);
                     if (p == null) continue;
 
                     entry.getValue().updateDetection(
@@ -352,6 +366,10 @@ public final class WarRuntime {
                     double rA = clamp01((double) aNow / Math.max(1, A));
                     double rD = clamp01((double) dNow / Math.max(1, D));
                     double presenceGain = SCALE * P0 * U * clamp01((rA - rD + 1.0) / 2.0);
+
+                    // pénalité inter-rounds adoucie (ROUND_GAIN_FACTOR ~ 0.95)
+                    presenceGain *= roundGainMultiplier;
+
                     pointsAttackers += presenceGain;
                 }
             }
@@ -359,10 +377,9 @@ public final class WarRuntime {
             int attackersCount = countOnline(war.getAttackerPlayers());
             int defendersCount = countOnline(war.getDefenderPlayers());
 
-
             for (var entry : ui.entrySet()) {
                 UUID id = entry.getKey();
-                Player p = Bukkit.getPlayer(id);
+                Player p = org.bukkit.Bukkit.getPlayer(id);
                 if (p == null) continue;
 
                 boolean isAttacker = war.getAttackerPlayers().contains(id);
@@ -372,10 +389,14 @@ public final class WarRuntime {
                 KDA k = kdas.getOrDefault(id, new KDA());
                 String kdaStr = k.k + "/" + k.d + "/" + k.a;
 
-                double ptsForSide = pointsAttackers;
                 entry.getValue().update(
-                        seconds, allies, enemies, kdaStr,
-                        ptsForSide, pointsAttackers, targetPoints
+                        seconds,
+                        allies,
+                        enemies,
+                        kdaStr,
+                        pointsAttackers,
+                        pointsAttackers,
+                        targetPoints
                 );
             }
         }
@@ -456,17 +477,64 @@ public final class WarRuntime {
             BossAndBoard bb = ui.remove(id);
             if (bb != null) bb.destroy();
         }
-        private int countOnline(java.util.Collection<java.util.UUID> ids) {
+
+        private static int countOnline(Collection<java.util.UUID> ids) {
             int n = 0;
             for (java.util.UUID id : ids) {
-                org.bukkit.entity.Player pl = org.bukkit.Bukkit.getPlayer(id);
-                if (pl != null && pl.isOnline()) n++;
+                org.bukkit.entity.Player p = org.bukkit.Bukkit.getPlayer(id);
+                if (p != null && p.isOnline()) n++;
             }
             return n;
         }
 
+        void adminForceEnd(boolean attackersWin) {
+            // Calcul % actuel (borne 0..100)
+            double percent = (targetPoints > 0.0) ? (pointsAttackers / targetPoints * 100.0) : 0.0;
+            if (percent < 0.0) percent = 0.0;
+            if (percent > 100.0) percent = 100.0;
 
+            String atkName = ChatUtil.kingdomName(war.getAttackerKingdom());
+            String defName = ChatUtil.kingdomName(war.getDefenderKingdom());
 
+            String roundMsg;
+            if (attackersWin) {
+                roundMsg = ChatUtil.prefixWithWar(
+                        org.bukkit.ChatColor.GOLD + "Fin forcée — " +
+                                org.bukkit.ChatColor.GREEN + "Victoire des attaquants ( " + atkName + " ) " +
+                                org.bukkit.ChatColor.GRAY + "— Pourcentage capture: " +
+                                org.bukkit.ChatColor.AQUA + String.format(java.util.Locale.US, "%.1f%%", percent)
+                );
+            } else {
+                roundMsg = ChatUtil.prefixWithWar(
+                        org.bukkit.ChatColor.GOLD + "Fin forcée — " +
+                                org.bukkit.ChatColor.RED + "Victoire des défenseurs (" + defName + ") " +
+                                org.bukkit.ChatColor.GRAY + "— Pourcentage capture: " +
+                                org.bukkit.ChatColor.AQUA + String.format(java.util.Locale.US, "%.1f%%", percent)
+                );
+            }
+
+            // Message aux inscrits
+            WarManager.sendToRegisteredPlayers(war,
+                    net.md_5.bungee.api.chat.TextComponent.fromLegacyText(roundMsg));
+
+            // Transfert du claim si victoire attaquants et claim engagé
+            if (attackersWin) {
+                com.kingdomspvp.kingdoms.model.Claim attacked = WarManager.getAttackedClaim(war);
+                if (attacked != null) {
+                    com.kingdomspvp.kingdoms.services.ClaimManager.transferClaimToKingdom(
+                            attacked, war.getAttackerKingdom().getName()
+                    );
+                }
+            }
+
+            // Arrêts visuels/états
+            com.kingdomspvp.kingdoms.utils.ClaimVisualization.stopWarOutlines(war);
+            war.setStatus(WarStatus.ENDED);
+            WarManager.getWars().put(war.getId(), war);
+
+            // Coupe le ticker & nettoie UI
+            stop(false);
+        }
 
 
         private static double clamp01(double v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }

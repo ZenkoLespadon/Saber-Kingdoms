@@ -4,7 +4,6 @@ import com.kingdomspvp.kingdoms.model.Claim;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.Faction;
-import com.massivecraft.factions.FactionsPlugin;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -14,33 +13,26 @@ import org.bukkit.block.Block;
 
 public class KingdomProtectionListener implements Listener {
 
-    private final FactionsPlugin plugin;
+    private static final String PERM_BYPASS = "kingdoms.admin.bypass";
 
-    public KingdomProtectionListener(FactionsPlugin plugin) {
-        this.plugin = plugin;
+    public KingdomProtectionListener() {
+    }
+
+    private boolean hasBypass(Player player) {
+        return player.isOp() || player.hasPermission(PERM_BYPASS);
     }
 
     private boolean isAllowed(Player player, Block block) {
-        int x = block.getX();
-        int z = block.getZ();
+        if (hasBypass(player)) return true;
 
-        Claim claim = ClaimManager.getClaimByCoordinates(x, z);
-        if (claim == null) return true;  // pas de claim = libre
-
-        // Si le claim est libre
+        Claim claim = ClaimManager.getClaimByCoordinates(block.getX(), block.getZ());
+        if (claim == null) return true;
         if (claim.getKingdomName().equalsIgnoreCase("None")) return true;
 
-        // Sinon, vérifie la faction du joueur
         Faction playerFaction = FPlayers.getInstance().getByPlayer(player).getFaction();
         String playerFactionName = playerFaction.getTag();
 
-        // Si le joueur est dans la même faction = autorisé
-        if (playerFactionName.equalsIgnoreCase(claim.getFactionName())) {
-            return true;
-        }
-
-        // Sinon = bloqué
-        return false;
+        return playerFactionName.equalsIgnoreCase(claim.getFactionName());
     }
 
     @EventHandler
