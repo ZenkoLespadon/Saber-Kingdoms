@@ -41,6 +41,9 @@ public class KingdomCommandExecutor implements CommandExecutor {
         this.rootCommand.addSubCommand(new TpToWarHiddenCommand());
         this.rootCommand.addSubCommand(new SpawnPointCommand());
         this.rootCommand.addSubCommand(new WarTestCommand());
+        this.rootCommand.addSubCommand(new WarsListAdminCommand());
+        this.rootCommand.addSubCommand(new WarEndCommand());
+        this.rootCommand.addSubCommand(new SetKingdomCommand());
     }
 
     @Override
