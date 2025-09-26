@@ -78,7 +78,7 @@ public final class WarJoinAnnounceListener implements Listener {
                 if (!alreadyRegistered) {
                     // Non inscrit → proposer l'inscription
                     Kingdom opp = pk.equals(w.getAttackerKingdom()) ? w.getDefenderKingdom() : w.getAttackerKingdom();
-                    String message = ChatColor.GOLD + "Guerre en cours contre "
+                    String message = ChatColor.GOLD + "Guerre en cours contre le Royaume "
                             + ChatUtil.kingdomName(opp) + ChatColor.GOLD + " ! ";
                     p.spigot().sendMessage(WarManager.buildJoinPrompt(w, message));
                 } else {

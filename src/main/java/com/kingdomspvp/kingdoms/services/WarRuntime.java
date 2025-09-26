@@ -25,22 +25,23 @@ public final class WarRuntime {
     // Réglages
     public static int WAR_DURATION_SECONDS = 150; // 2min30
 
-    // Réglages des rounds
+    // Rounds
     private static final int MAX_ROUNDS = 4;
-    private static final double ROUND_GAIN_FACTOR = 0.87; // -13% de gains par round
+    /** Réduction de gain par round pour approcher la même durée totale qu'avec d’anciens rounds de 10min. */
+    private static final double ROUND_GAIN_FACTOR = 0.87; // ~ -13% par round
 
-    // cible à 80% du score both-full → ~8:00 pour 10:00 en 1v1
-    private static final double TARGET_FRACTION   = 0.70;
+    /** Cible fixe : 1000 pts pour “capturer”. */
+    private static final double TARGET_POINTS = 1000.0;
+    /** On veut atteindre 1000 pts en 80% de la durée (ratio = 1). */
+    private static final double TARGET_FRACTION = 0.80;
+    private static final double BASE_TIME_AT_RATIO_1 = WAR_DURATION_SECONDS * TARGET_FRACTION; // 120s
+    /** Gain de base (pts/s) quand ratio = 1 et round 1. */
+    private static final double BASE_RATE = TARGET_POINTS / BASE_TIME_AT_RATIO_1; // ≈ 8.333 pts/s
 
-    // P0=0.08, 10 min = 600s → échelle pour viser 1000 points en 10 min (1v1, U=1)
-    private static final double TARGET_AT_10_MIN  = 1000.0;
-    private static final double SCALE = TARGET_AT_10_MIN / (TARGET_FRACTION * 0.5 * 1 * WAR_DURATION_SECONDS);
+    /** Bornes de ratio → 60..240s */
+    private static final double RATIO_MIN = 0.5;  // 240s
+    private static final double RATIO_MAX = 2.0;  // 60s
 
-    // Paramètres (cohérents avec la description)
-    private static final double P0    = 0.08;  // pts/sec (présence max si 100% attaquants / 0% défenseurs)
-    private static final double BETA  = 0.5;   // intensité underdog
-    private static final double U_MIN = 0.7;
-    private static final double U_MAX = 1.4;
 
     public static void onDetectionWindowStarted(War war, Duration window) { getOrCreate(war).startDetectionWindow(window); }
     public static void onDetectionWindowEnded(War war) { getOrCreate(war).endDetectionWindow(); }
@@ -146,17 +147,18 @@ public final class WarRuntime {
         private final War war;
         private final org.bukkit.plugin.Plugin plugin = com.massivecraft.factions.FactionsPlugin.getInstance();
 
+        private double pointsAttackers = 0.0;
+        private double targetPoints    = TARGET_POINTS; // S*
+        private double roundGainMultiplier = 1.0;
+
         private int roundIndex = 1;               // 1..MAX_ROUNDS
-        private double roundGainMultiplier = 1.0; // 1.0, 0.8, 0.64, 0.512
         private boolean combatActive = false;     // timer combat (round) actif ?
 
         private int seconds = WAR_DURATION_SECONDS;
         private int taskId = -1;
         private Claim attackedClaim;
 
-        private final Map<UUID, KDA> kdas = new ConcurrentHashMap<>();
-        private double pointsAttackers = 0.0;
-        private double targetPoints    = 1.0; // S*
+        private final Map<UUID, KDA> kdas = new ConcurrentHashMap<>();// S*
         private double U               = 1.0;
 
         private int A = 0, D = 0; // inscrits
@@ -182,16 +184,14 @@ public final class WarRuntime {
         void onWarBegan() {
             this.A = Math.max(1, war.getAttackerPlayers().size());
             this.D = Math.max(1, war.getDefenderPlayers().size());
-            double rawU = Math.pow((double) D / Math.max(1, A), BETA);
-            this.U = Math.max(U_MIN, Math.min(U_MAX, rawU));
             startTicker();
         }
 
         void onFirstClaimAttacked(Claim c) {
             this.attackedClaim = c;
-            this.seconds = WAR_DURATION_SECONDS; // 150
+            this.seconds = WAR_DURATION_SECONDS;
             this.combatActive = true;
-            this.targetPoints = SCALE * TARGET_FRACTION * 0.5 * P0 * U * WAR_DURATION_SECONDS;
+            this.targetPoints = TARGET_POINTS;   // objectif fixe
             this.pointsAttackers = 0.0;
         }
 
@@ -228,67 +228,67 @@ public final class WarRuntime {
             );
         }
 
+        // WarRuntime.WarSession
         private void endWar(boolean attackersInstantWin) {
             final boolean attackersWon = (pointsAttackers >= targetPoints);
-
             double percent = (targetPoints > 0.0) ? (pointsAttackers / targetPoints * 100.0) : 0.0;
             if (percent < 0.0) percent = 0.0;
             if (percent > 100.0) percent = 100.0;
 
-            String atkName = com.kingdomspvp.kingdoms.utils.ChatUtil.kingdomName(war.getAttackerKingdom());
-            String defName = com.kingdomspvp.kingdoms.utils.ChatUtil.kingdomName(war.getDefenderKingdom());
-            String roundMsg;
-            if (attackersWon) {
-                roundMsg = com.kingdomspvp.kingdoms.utils.ChatUtil.prefixWithWar(
-                        org.bukkit.ChatColor.GOLD + "Fin du round " + roundIndex + " — "
-                                + org.bukkit.ChatColor.GREEN + "Victoire des attaquants ( " + atkName + " ) "
-                                + org.bukkit.ChatColor.GRAY + "— Pourcentage capture: "
-                                + org.bukkit.ChatColor.AQUA + String.format(java.util.Locale.US, "%.1f%%", percent)
-                                + (attackersInstantWin ? org.bukkit.ChatColor.DARK_GRAY + " (objectif atteint)" : "")
-                );
-            } else {
-                roundMsg = com.kingdomspvp.kingdoms.utils.ChatUtil.prefixWithWar(
-                        org.bukkit.ChatColor.GOLD + "Fin du round " + roundIndex + " — "
-                                + org.bukkit.ChatColor.RED + "Victoire des défenseurs (" + defName + ") "
-                                + org.bukkit.ChatColor.GRAY + "— Pourcentage capture: "
-                                + org.bukkit.ChatColor.AQUA + String.format(java.util.Locale.US, "%.1f%%", percent)
-                );
-            }
+            String atkName = ChatUtil.kingdomName(war.getAttackerKingdom());
+            String defName = ChatUtil.kingdomName(war.getDefenderKingdom());
+            String roundMsg = attackersWon
+                    ? ChatUtil.prefixWithWar(
+                    org.bukkit.ChatColor.GOLD + "Fin du round " + roundIndex + " — "
+                            + org.bukkit.ChatColor.GREEN + "Victoire des attaquants ( " + atkName + " ) "
+                            + org.bukkit.ChatColor.GRAY + "— Pourcentage capture: "
+                            + org.bukkit.ChatColor.AQUA + String.format(java.util.Locale.US, "%.1f%%", percent)
+                            + (attackersInstantWin ? org.bukkit.ChatColor.DARK_GRAY + " (objectif atteint)" : "")
+            )
+                    : ChatUtil.prefixWithWar(
+                    org.bukkit.ChatColor.GOLD + "Fin du round " + roundIndex + " — "
+                            + org.bukkit.ChatColor.RED + "Victoire des défenseurs (" + defName + ") "
+                            + org.bukkit.ChatColor.GRAY + "— Pourcentage capture: "
+                            + org.bukkit.ChatColor.AQUA + String.format(java.util.Locale.US, "%.1f%%", percent)
+            );
 
             WarManager.sendToRegisteredPlayers(
-                    war,
-                    net.md_5.bungee.api.chat.TextComponent.fromLegacyText(roundMsg)
-            );
+                    war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(roundMsg));
 
             if (attackersWon && attackedClaim != null) {
                 ClaimManager.transferClaimToKingdom(attackedClaim, war.getAttackerKingdom().getName());
             }
 
-            WarManager.prepareNextRound(war, attackersWon && roundIndex < MAX_ROUNDS);
-
             if (attackersWon && roundIndex < MAX_ROUNDS) {
-                roundIndex++;
-                roundGainMultiplier *= ROUND_GAIN_FACTOR; // ex: 1.00 → 0.95 → 0.9025 → …
+                // Préparer round suivant : d’abord messages, ensuite préparation
+                int nextRound = roundIndex + 1;
 
+                // 1) [War] Début du round n°X (pour ATT + DEF)
+                WarManager.sendToAttackers(war, WarManager.buildRoundStartMessage(nextRound));
+                WarManager.sendToDefenders(war, WarManager.buildRoundStartMessage(nextRound));
+
+                // 2) Instruction aux attaquants (sans “suivant”)
+                WarManager.sendToAttackers(war, WarManager.buildWaitForRoundMessage(war.getDefenderKingdom()));
+
+                // État interne pour le nouveau round
+                roundIndex = nextRound;
+                roundGainMultiplier *= ROUND_GAIN_FACTOR;
                 this.combatActive = false;
                 this.attackedClaim = null;
                 this.pointsAttackers = 0.0;
                 this.defendersKills = 0;
 
+                // Lance la fenêtre de détection du round suivant (aucun message ici)
                 WarManager.prepareNextRound(war, true);
-
-                WarManager.sendToAttackers(war,
-                        org.bukkit.ChatColor.GOLD + "Round " + roundIndex + " — Attaquez un nouveau claim pour commencer !");
-                WarManager.sendToDefenders(war,
-                        org.bukkit.ChatColor.RED + "Round " + roundIndex + " — Préparez la défense.");
-
                 return;
             }
 
-            war.setStatus(com.kingdomspvp.kingdoms.model.WarStatus.ENDED);
+            war.setStatus(WarStatus.ENDED);
             WarManager.getWars().put(war.getId(), war);
             stop(false);
         }
+
+
 
         private String winnerLine() { return winnerLine(false); }
         private String winnerLine(boolean attackersInstantWin) {
@@ -359,18 +359,37 @@ public final class WarRuntime {
             }
 
             if (attackedClaim != null) {
+                // Effectifs inscrits dynamiques
+                this.A = Math.max(1, war.getAttackerPlayers().size());
+                this.D = Math.max(1, war.getDefenderPlayers().size());
+
                 int aNow = attackersInClaimNow();
                 int dNow = defendersInClaimNow();
 
                 if (aNow > 0) {
-                    double rA = clamp01((double) aNow / Math.max(1, A));
-                    double rD = clamp01((double) dNow / Math.max(1, D));
-                    double presenceGain = SCALE * P0 * U * clamp01((rA - rD + 1.0) / 2.0);
+                    // Fractions de présence (0..1)
+                    double fA = (double) aNow / Math.max(1, A);
+                    double fD = (double) dNow / Math.max(1, D);
 
-                    // pénalité inter-rounds adoucie (ROUND_GAIN_FACTOR ~ 0.95)
-                    presenceGain *= roundGainMultiplier;
+                    // Règle voulue + cas particuliers :
+                    // - ratio = fA / fD si dNow > 0
+                    // - si dNow == 0 :
+                    //      * si fA == 1.0  -> ratio = 2.0  (2/2 vs 0/2 → 60s)
+                    //      * sinon          -> ratio = fA  (1/2 vs 0/2 → 0.5 → 240s)
+                    double ratio;
+                    if (dNow > 0) {
+                        ratio = fA / fD;
+                    } else {
+                        ratio = (fA >= 1.0) ? 2.0 : fA;
+                    }
 
-                    pointsAttackers += presenceGain;
+                    // Bornage pour garantir 60..240 s
+                    if (ratio < RATIO_MIN) ratio = RATIO_MIN;
+                    if (ratio > RATIO_MAX) ratio = RATIO_MAX;
+
+                    // Gain de points de cette seconde
+                    double gainPerSecond = BASE_RATE * roundGainMultiplier * ratio;
+                    pointsAttackers += gainPerSecond;
                 }
             }
 

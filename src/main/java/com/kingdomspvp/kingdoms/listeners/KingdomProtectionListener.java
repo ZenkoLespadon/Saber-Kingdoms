@@ -52,4 +52,5 @@ public class KingdomProtectionListener implements Listener {
             player.sendMessage(ChatColor.RED + "Vous ne pouvez pas construire dans un royaume ennemi.");
         }
     }
+
 }

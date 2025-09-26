@@ -1,7 +1,10 @@
 package com.kingdomspvp.kingdoms.services;
 
 import com.kingdomspvp.kingdoms.events.WarStartEvent;
+import com.kingdomspvp.kingdoms.listeners.WarBlockEditListener;
 import com.kingdomspvp.kingdoms.listeners.WarClaimListener;
+import com.kingdomspvp.kingdoms.listeners.WarDeathListener;
+import com.kingdomspvp.kingdoms.listeners.WarKDAListener;
 import com.kingdomspvp.kingdoms.model.Claim;
 import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.model.War;
@@ -33,6 +36,10 @@ import java.util.*;
 
 import static com.kingdomspvp.kingdoms.services.WarRuntime.stopAll;
 
+
+// TODO : Peu importe le nombre d'attaquants les points gagnés sont au maximum
+// TODO : Les particules du claim restent après la fin de la guerre
+
 /**
  * Gère la vie des guerres (hors phase pré-guerre : déclaration, inscriptions, délais).
  * - Planification démarrage et prompts d'inscription.
@@ -51,8 +58,6 @@ public class WarManager {
 mettre la pomme cheat 1.20
 
 c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules (vérifier si c'est tous les packs ou juste le sien)
-
-Faire le listener pour le pvp
  */
 
     public static Duration MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
@@ -74,7 +79,14 @@ Faire le listener pour le pvp
     /** Guerres à surveiller pendant la fenêtre de détection (INPROGRESS & !combatStarted). */
     private static final Map<String, War> ACTIVE_DETECTION_WARS = new java.util.concurrent.ConcurrentHashMap<>();
     private static WarClaimListener claimListener; // null si non enregistré
+    private static WarKDAListener kdaListener; // null si non enregistré
+    private static WarDeathListener deathListener; // null si non enregistré
+    private static WarBlockEditListener blockEditListener; // null si non enregistré
+
     private static boolean claimListenerRegistered = false;
+    private static boolean kdaListenerRegistered = false;
+    private static boolean deathListenerRegistered = false;
+    private static boolean blockEditListenerRegistered = false;
 
     /** Fenêtre max de détection avant auto-arrêt. */
     public static final Duration DETECTION_WINDOW = Duration.ofMinutes(2);
@@ -251,7 +263,7 @@ Faire le listener pour le pvp
         ClaimVisualization.startWarOutlines(w);
 
         ACTIVE_DETECTION_WARS.put(w.getId(), w);
-        ensureClaimListenerRegistered();
+        registerWarsListeners();
 
         WarRuntime.onDetectionWindowStarted(w, DETECTION_WINDOW);
 
@@ -366,17 +378,13 @@ Faire le listener pour le pvp
             org.bukkit.ChatColor atkColor = war.getAttackerKingdom().getColor();
             org.bukkit.ChatColor defColor = war.getDefenderKingdom().getColor();
 
-            String legacyMsg =
+            String joinMessage =
                     org.bukkit.ChatColor.GOLD + who + " a rejoint la guerre, "
                             + atkColor + attackers + org.bukkit.ChatColor.GOLD + " attaquants contre "
                             + defColor + defenders + org.bukkit.ChatColor.GOLD + " défenseurs.";
 
-            // ➜ Préfixe [War] pour le broadcast
-            legacyMsg = com.kingdomspvp.kingdoms.utils.ChatUtil.prefixWithWar(legacyMsg);
-            sendToRegisteredPlayers(war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(legacyMsg));
-
-            // ➜ Confirmation individuelle avec [War]
-            ChatUtil.sendWarMsg(player, org.bukkit.ChatColor.GREEN + "Inscription enregistrée.");
+            joinMessage = ChatUtil.prefixWithWar(joinMessage);
+            sendToRegisteredPlayers(war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(joinMessage));
 
             if (war.getStatus() == WarStatus.INPROGRESS) {
                 if (war.hasCombatStarted()) {
@@ -493,6 +501,22 @@ Faire le listener pour le pvp
         return TextComponent.fromLegacyText(legacy);
     }
 
+    public static BaseComponent[] buildRoundStartMessage(int roundIndex) {
+        String legacy = ChatUtil.prefixWithWar(
+                net.md_5.bungee.api.ChatColor.GOLD + "Début du round n°" + roundIndex
+        );
+        return TextComponent.fromLegacyText(legacy);
+    }
+
+    public static BaseComponent[] buildWaitForRoundMessage(Kingdom defender) {
+        String defName = ChatUtil.kingdomName(defender);
+        String legacy = ChatUtil.prefixWithWar(
+                net.md_5.bungee.api.ChatColor.GOLD + "Attaquez un claim du royaume " + defName
+                        + net.md_5.bungee.api.ChatColor.GOLD + " pour démarrer le round !"
+        );
+        return TextComponent.fromLegacyText(legacy);
+    }
+
 
 
     public static BaseComponent[] buildTpToWarNowMessage(String warId) {
@@ -538,12 +562,29 @@ Faire le listener pour le pvp
     // Détection du premier claim attaqué
     // ------------------------------------------------------------------------
 
-    private static void ensureClaimListenerRegistered() {
+    private static void registerWarsListeners() {
         if (!claimListenerRegistered) {
             claimListener = new WarClaimListener(ACTIVE_DETECTION_WARS);
             Bukkit.getPluginManager().registerEvents(claimListener, FactionsPlugin.getInstance());
             claimListenerRegistered = true;
         }
+        if (!kdaListenerRegistered) {
+            // null si non enregistré
+            kdaListener = new WarKDAListener();
+            Bukkit.getPluginManager().registerEvents(kdaListener, FactionsPlugin.getInstance());
+            kdaListenerRegistered = true;
+        }
+        if (!deathListenerRegistered) {
+            deathListener = new WarDeathListener();
+            Bukkit.getPluginManager().registerEvents(deathListener, FactionsPlugin.getInstance());
+            deathListenerRegistered = true;
+        }
+        if (!blockEditListenerRegistered) {
+            blockEditListener = new WarBlockEditListener();
+            Bukkit.getPluginManager().registerEvents(blockEditListener, FactionsPlugin.getInstance());
+            blockEditListenerRegistered = true;
+        }
+
     }
 
     private static void unregisterClaimListenerIfIdle() {
@@ -554,12 +595,27 @@ Faire le listener pour le pvp
             claimListenerRegistered = false;
             claimListener = null;
         }
+        if (kdaListenerRegistered && !anyInProgress) {
+            HandlerList.unregisterAll(kdaListener);
+            kdaListenerRegistered = false;
+            kdaListener = null;
+        }
+        if (deathListenerRegistered && !anyInProgress) {
+            HandlerList.unregisterAll(deathListener);
+            deathListenerRegistered = false;
+            deathListener = null;
+        }
+        if (blockEditListenerRegistered && !anyInProgress) {
+            HandlerList.unregisterAll(blockEditListener);
+            blockEditListenerRegistered = false;
+            blockEditListener = null;
+        }
     }
 
     /** À appeler quand une guerre passe à INPROGRESS. */
     private static void enableDetectionFor(War w) {
         ACTIVE_DETECTION_WARS.put(w.getId(), w);
-        ensureClaimListenerRegistered();
+        registerWarsListeners();
 
         long ticks = DETECTION_WINDOW.toSeconds() * 20L;
         int taskId = Bukkit.getScheduler().scheduleSyncDelayedTask(
@@ -694,11 +750,10 @@ Faire le listener pour le pvp
         return getClaimCenter(staging);
     }
 
-    // WarManager.java
+
     public static void enableDetectionForNextRound(War w) {
-        // réutilise la même mécanique que le 1er round
         ACTIVE_DETECTION_WARS.put(w.getId(), w);
-        ensureClaimListenerRegistered();
+        registerWarsListeners();
 
         WarRuntime.onDetectionWindowStarted(w, DETECTION_WINDOW);
 
@@ -709,41 +764,28 @@ Faire le listener pour le pvp
                 ticks
         );
         detectionTimeoutTasks.put(w.getId(), taskId);
-
-        // Message d’instruction aux attaquants (facultatif)
-        sendToAttackers(w, buildWaitForAttackMessage(w.getDefenderKingdom()));
     }
 
-    // Java
     public static void prepareNextRound(War w, boolean nextRoundWillStart) {
         if (w == null) return;
 
-        // A) Stop tout affichage restant
         ClaimVisualization.stopWarOutlines(w);
-
-        // B) Reset la phase de combat
         w.resetRound();
 
-        // C) Recalcule la frontière attaquable côté DEF
         java.util.List<Claim> attackables = ClaimManager.getDefenderClaimsAdjacentToAttacker(
                 w.getDefenderKingdom().getName(),
                 w.getAttackerKingdom().getName()
         );
         w.setAttackableDefenderClaims(attackables);
-
-        // D) Persiste
         warsJSON.addWar(w);
 
         if (nextRoundWillStart) {
-            // E) Relance l’affichage: uniquement les claims attaquables
             ClaimVisualization.startWarOutlines(w);
 
-            // F) Réarmer la détection “premier claim attaqué”
             ACTIVE_DETECTION_WARS.put(w.getId(), w);
-
             WarRuntime.onDetectionWindowStarted(w, DETECTION_WINDOW);
 
-            ensureClaimListenerRegistered();
+            registerWarsListeners();
             long ticks = DETECTION_WINDOW.toSeconds() * 20L;
             int taskId = org.bukkit.Bukkit.getScheduler().scheduleSyncDelayedTask(
                     FactionsPlugin.getInstance(),
@@ -751,9 +793,6 @@ Faire le listener pour le pvp
                     ticks
             );
             detectionTimeoutTasks.put(w.getId(), taskId);
-
-            // G) Feedback
-            sendToAttackers(w, buildWaitForAttackMessage(w.getDefenderKingdom()));
         }
     }
 
