@@ -44,7 +44,7 @@ public class KingdomCommandExecutor implements CommandExecutor {
         this.rootCommand.addSubCommand(new WarsListAdminCommand());
         this.rootCommand.addSubCommand(new WarEndCommand());
         this.rootCommand.addSubCommand(new SetKingdomCommand());
-    }
+        this.rootCommand.addSubCommand(new AutoClaimCommand(plugin));    }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
