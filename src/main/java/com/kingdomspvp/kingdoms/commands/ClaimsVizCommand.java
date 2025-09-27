@@ -1,3 +1,4 @@
+// src/main/java/com/kingdomspvp/kingdoms/commands/ClaimsVizCommand.java
 package com.kingdomspvp.kingdoms.commands;
 
 import com.kingdomspvp.kingdoms.utils.ClaimVisualization;
@@ -17,6 +18,7 @@ public class ClaimsVizCommand extends KingdomCommand {
 
     public ClaimsVizCommand(FactionsPlugin plugin) {
         this.plugin = plugin;
+        ClaimVisualization.init(plugin); // injection sûre du Plugin
         this.aliases = Arrays.asList("vizclaims", "vizall");
         this.requiredArgs = Collections.emptyList();
         this.helpShort = ChatColor.GRAY + "Trace tous les claims via particules (visible par tous).";
@@ -30,23 +32,21 @@ public class ClaimsVizCommand extends KingdomCommand {
             return;
         }
 
-        // stop ?
         if (!context.args.isEmpty() && "stop".equalsIgnoreCase(context.args.get(0))) {
             stopGlobal();
             context.msg(ChatColor.YELLOW + "Visualisation arrêtée pour tous.");
             return;
         }
 
-        int seconds = 15;
+        int seconds = 30;
         if (!context.args.isEmpty()) {
             try { seconds = Math.max(1, Integer.parseInt(context.args.get(0))); }
             catch (NumberFormatException ignored) {}
         }
 
-        // remplace une éventuelle tâche en cours
         stopGlobal();
 
-        final int periodTicks = 10;               // rafraîchit toutes les 0.5 s
+        final int periodTicks = 10; // 0.5s
         final int maxRuns = (seconds * 20) / periodTicks;
 
         globalTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(
@@ -54,7 +54,8 @@ public class ClaimsVizCommand extends KingdomCommand {
                 new Runnable() {
                     int runs = 0;
                     @Override public void run() {
-                        // mondes où il y a au moins un joueur
+                        ClaimVisualization.beginFrameBudget(); // reset budget/compteurs
+
                         Set<World> worlds = Bukkit.getOnlinePlayers()
                                 .stream().map(Player::getWorld).collect(Collectors.toSet());
 
