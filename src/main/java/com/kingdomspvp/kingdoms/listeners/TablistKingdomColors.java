@@ -7,7 +7,6 @@ import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
-import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.entity.Player;
 import org.bukkit.event.*;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
@@ -15,6 +14,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 
 import java.util.HashMap;
@@ -25,7 +25,6 @@ public final class TablistKingdomColors implements Listener {
     private final Plugin plugin;
     private int taskId = -1;
 
-    // Ordre de tri voulu dans le TAB
     private static final ChatColor[] ORDER = new ChatColor[] {
             ChatColor.DARK_RED, ChatColor.RED,
             ChatColor.GOLD, ChatColor.YELLOW,
@@ -40,14 +39,12 @@ public final class TablistKingdomColors implements Listener {
 
     private static Scoreboard sb() { return Bukkit.getScoreboardManager().getMainScoreboard(); }
 
-    /** Enregistre le listener et démarre l’auto-refresh (période ticks). */
     public TablistKingdomColors(Plugin plugin, long periodTicks) {
         this.plugin = plugin;
         ensureTeamsExist();
-        // assign immédiat sur les joueurs déjà connectés
-        refreshAll();
+        // premier refresh décalé d’1 tick pour laisser les autres listeners agir
+        Bukkit.getScheduler().runTask(plugin, TablistKingdomColors::refreshAll);
 
-        // tâche périodique
         if (periodTicks > 0) {
             this.taskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(
                     plugin, TablistKingdomColors::refreshAll, periodTicks, periodTicks
@@ -55,7 +52,6 @@ public final class TablistKingdomColors implements Listener {
         }
     }
 
-    /** Stoppe l’auto-refresh (à appeler dans onDisable). */
     public void stop() {
         if (taskId != -1) {
             Bukkit.getScheduler().cancelTask(taskId);
@@ -63,20 +59,27 @@ public final class TablistKingdomColors implements Listener {
         }
     }
 
-    // --- Hooks évènementiels pour rafraîchir plus souvent ---
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onJoin(PlayerJoinEvent e) { assign(e.getPlayer()); }
+    public void onJoin(PlayerJoinEvent e) {
+        // décale d’1 tick pour éviter chevauchements avec d’autres plugins
+        Bukkit.getScheduler().runTask(plugin, () -> assign(e.getPlayer()));
+    }
 
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onQuit(PlayerQuitEvent e) { removeFromAnyTeam(e.getPlayer()); }
+    public void onQuit(PlayerQuitEvent e) {
+        safeRemoveFromCurrentTeam(e.getPlayer());
+    }
 
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onRespawn(PlayerRespawnEvent e) { assign(e.getPlayer()); }
+    public void onRespawn(PlayerRespawnEvent e) {
+        Bukkit.getScheduler().runTask(plugin, () -> assign(e.getPlayer()));
+    }
 
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onWorldChange(PlayerChangedWorldEvent e) { assign(e.getPlayer()); }
+    public void onWorldChange(PlayerChangedWorldEvent e) {
+        Bukkit.getScheduler().runTask(plugin, () -> assign(e.getPlayer()));
+    }
 
-    // --- API statique ---
     public static void refresh(Player p) { assign(p); }
 
     public static void refreshAll() {
@@ -108,22 +111,40 @@ public final class TablistKingdomColors implements Listener {
     private static void assign(Player p) {
         if (p == null || !p.isOnline()) return;
 
-        removeFromAnyTeam(p);
-
         Kingdom k = getPlayerKingdom(p);
         ChatColor c = (k != null && k.getColor() != null) ? k.getColor() : ChatColor.WHITE;
 
-        Team t = sb().getTeam(teamNameFor(c));
-        if (t != null) {
-            t.addEntry(p.getName());
-            p.setPlayerListName(c + p.getName() + ChatColor.RESET);
+        Scoreboard s = sb();
+        String targetName = teamNameFor(c);
+        Team target = s.getTeam(targetName);
+        if (target == null) target = s.registerNewTeam(targetName);
+
+        String entry = p.getName();
+
+        Team current = s.getEntryTeam(entry);
+        if (current != null && current.getName().equals(target.getName())) {
+            // déjà dans la bonne équipe → rien à faire
+        } else {
+            if (current != null && current.hasEntry(entry)) {
+                current.removeEntry(entry); // un seul REMOVE_PLAYER, pas de boucle
+            }
+            if (!target.hasEntry(entry)) {
+                target.addEntry(entry);
+            }
+        }
+
+        String desiredListName = c + p.getName() + ChatColor.RESET;
+        if (!desiredListName.equals(p.getPlayerListName())) {
+            p.setPlayerListName(desiredListName);
         }
     }
 
-    private static void removeFromAnyTeam(Player p) {
+    private static void safeRemoveFromCurrentTeam(Player p) {
+        if (p == null) return;
         Scoreboard s = sb();
-        for (Team t : s.getTeams()) {
-            if (t.hasEntry(p.getName())) t.removeEntry(p.getName());
+        Team current = s.getEntryTeam(p.getName());
+        if (current != null && current.hasEntry(p.getName())) {
+            current.removeEntry(p.getName());
         }
     }
 

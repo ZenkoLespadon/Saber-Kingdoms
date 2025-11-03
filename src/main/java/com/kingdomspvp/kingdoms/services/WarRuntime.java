@@ -228,7 +228,6 @@ public final class WarRuntime {
             );
         }
 
-        // WarRuntime.WarSession
         private void endWar(boolean attackersInstantWin) {
             final boolean attackersWon = (pointsAttackers >= targetPoints);
             double percent = (targetPoints > 0.0) ? (pointsAttackers / targetPoints * 100.0) : 0.0;
@@ -255,39 +254,38 @@ public final class WarRuntime {
             WarManager.sendToRegisteredPlayers(
                     war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(roundMsg));
 
-            if (attackersWon && attackedClaim != null) {
-                ClaimManager.transferClaimToKingdom(attackedClaim, war.getAttackerKingdom().getName());
-            }
-
             if (attackersWon && roundIndex < MAX_ROUNDS) {
-                // Préparer round suivant : d’abord messages, ensuite préparation
                 int nextRound = roundIndex + 1;
-
-                // 1) [War] Début du round n°X (pour ATT + DEF)
                 WarManager.sendToAttackers(war, WarManager.buildRoundStartMessage(nextRound));
                 WarManager.sendToDefenders(war, WarManager.buildRoundStartMessage(nextRound));
-
-                // 2) Instruction aux attaquants (sans “suivant”)
                 WarManager.sendToAttackers(war, WarManager.buildWaitForRoundMessage(war.getDefenderKingdom()));
-
-                // État interne pour le nouveau round
                 roundIndex = nextRound;
                 roundGainMultiplier *= ROUND_GAIN_FACTOR;
                 this.combatActive = false;
                 this.attackedClaim = null;
                 this.pointsAttackers = 0.0;
                 this.defendersKills = 0;
-
-                // Lance la fenêtre de détection du round suivant (aucun message ici)
                 WarManager.prepareNextRound(war, true);
                 return;
             }
 
+            // --- NETTOYAGE FINAL ---
+            com.kingdomspvp.kingdoms.utils.ClaimVisualization.stopWarOutlines(war);
+
             war.setStatus(WarStatus.ENDED);
             WarManager.getWars().put(war.getId(), war);
+
+            for (java.util.UUID id : war.getAttackerPlayers()) {
+                org.bukkit.entity.Player p = org.bukkit.Bukkit.getPlayer(id);
+                if (p != null) com.kingdomspvp.kingdoms.services.WarManager.clearSidebarFor(p);
+            }
+            for (java.util.UUID id : war.getDefenderPlayers()) {
+                org.bukkit.entity.Player p = org.bukkit.Bukkit.getPlayer(id);
+                if (p != null) com.kingdomspvp.kingdoms.services.WarManager.clearSidebarFor(p);
+            }
+
             stop(false);
         }
-
 
 
         private String winnerLine() { return winnerLine(false); }

@@ -13,6 +13,7 @@ public class WarTestCommand extends KingdomCommand {
         this.requiredArgs = Arrays.asList(); // on gère on|off|status nous-mêmes
         this.helpShort = ChatColor.GRAY + "Active/désactive le mode test (fenêtre 1–20 min).";
         this.optionalArgs.put("on|off|status", "");
+        this.permission = "kingdoms.admin.war.testmode";
     }
 
     @Override
@@ -60,6 +61,20 @@ public class WarTestCommand extends KingdomCommand {
     @Override
     public String getUsageTranslation() {
         return ChatColor.GREEN + "wartest " + ChatColor.WHITE + "[on|off|status]";
+    }
+
+    @Override
+    public java.util.List<String> tabComplete(KingdomCommandContext context) {
+        int n = context.args.size();
+        if (n == 0) return java.util.Collections.emptyList();
+        if (n == 1) {
+            String pref = context.args.get(0).toLowerCase(java.util.Locale.ROOT);
+            return java.util.Arrays.asList("on","off","status").stream()
+                    .filter(s -> s.startsWith(pref))
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .toList();
+        }
+        return java.util.Collections.emptyList();
     }
 }
 

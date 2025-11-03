@@ -16,13 +16,14 @@ public class SetKingdomCommand extends KingdomCommand {
         this.aliases = Arrays.asList("setkingdom", "sk");
         this.requiredArgs = Arrays.asList("player", "kingdom");
         this.helpShort = ChatColor.GRAY + "Met un joueur dans un royaume (admin)";
+        this.permission = "kingdoms.admin.setkingdom";
     }
 
     @Override
     public void perform(KingdomCommandContext context) {
         CommandSender sender = context.sender;
 
-        if (!sender.hasPermission("kingdoms.admin.setkingdom")) {
+        if (!sender.hasPermission(this.permission)) {
             sender.sendMessage(ChatColor.RED + "Permission manquante: kingdoms.admin.setkingdom");
             return;
         }
@@ -71,5 +72,37 @@ public class SetKingdomCommand extends KingdomCommand {
     public String getUsageTranslation() {
         return ChatColor.GREEN + "setkingdom " + ChatColor.WHITE + "<player> <kingdom>";
     }
+
+    @Override
+    public java.util.List<String> tabComplete(KingdomCommandContext context) {
+        int n = context.args.size();
+        if (n <= 0) return java.util.Collections.emptyList();
+
+        // arg0 : joueur en ligne
+        if (n == 1) {
+            String pref = context.args.get(0).toLowerCase(java.util.Locale.ROOT);
+            java.util.List<String> names = new java.util.ArrayList<>();
+            for (org.bukkit.entity.Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+                names.add(p.getName());
+            }
+            return names.stream()
+                    .filter(s -> s.toLowerCase(java.util.Locale.ROOT).startsWith(pref))
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .toList();
+        }
+
+        // arg1 : royaume
+        if (n == 2) {
+            String pref = context.args.get(1).toLowerCase(java.util.Locale.ROOT);
+            return com.kingdomspvp.kingdoms.services.KingdomsManager.getKingdoms().stream()
+                    .map(com.kingdomspvp.kingdoms.model.Kingdom::getName)
+                    .filter(nm -> nm.toLowerCase(java.util.Locale.ROOT).startsWith(pref))
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .toList();
+        }
+
+        return java.util.Collections.emptyList();
+    }
+
 }
 

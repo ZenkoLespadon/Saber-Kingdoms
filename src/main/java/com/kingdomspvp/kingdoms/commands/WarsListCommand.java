@@ -16,7 +16,7 @@ public class WarsListCommand extends KingdomCommand {
     public WarsListCommand() {
         this.aliases      = Arrays.asList("wars", "warslist");
         this.helpShort    = ChatColor.GRAY + "Affiche la liste des guerres programmées ou en cours";
-        this.requiredArgs = Arrays.asList(); // aucun argument requis
+        this.requiredArgs = Arrays.asList();
     }
 
     @Override

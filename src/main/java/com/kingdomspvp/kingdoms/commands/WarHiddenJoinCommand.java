@@ -12,10 +12,12 @@ import org.bukkit.ChatColor;
 import java.util.Arrays;
 
 public class WarHiddenJoinCommand extends KingdomCommand {
+
     public WarHiddenJoinCommand() {
         this.aliases = Arrays.asList("_warjoin");        // cachée derrière /k
         this.requiredArgs = Arrays.asList("warId");
-        this.helpShort = null; // pas d'affichage d'aide
+        this.helpShort = null;
+        this.hidden = true;
     }
 
     @Override

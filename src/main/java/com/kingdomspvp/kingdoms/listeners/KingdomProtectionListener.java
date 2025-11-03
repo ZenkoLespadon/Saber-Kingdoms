@@ -2,14 +2,15 @@ package com.kingdomspvp.kingdoms.listeners;
 
 import com.kingdomspvp.kingdoms.model.Claim;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
-import com.massivecraft.factions.FPlayers;
-import com.massivecraft.factions.Faction;
+import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.*;
 import org.bukkit.block.Block;
+
+import java.util.Objects;
 
 public class KingdomProtectionListener implements Listener {
 
@@ -29,10 +30,8 @@ public class KingdomProtectionListener implements Listener {
         if (claim == null) return true;
         if (claim.getKingdomName().equalsIgnoreCase("None")) return true;
 
-        Faction playerFaction = FPlayers.getInstance().getByPlayer(player).getFaction();
-        String playerFactionName = playerFaction.getTag();
-
-        return playerFactionName.equalsIgnoreCase(claim.getFactionName());
+        String playerKingdomName = Objects.requireNonNull(KingdomsManager.getKingdomOfPlayer(player)).getName();
+        return playerKingdomName.equalsIgnoreCase(claim.getKingdomName());
     }
 
     @EventHandler

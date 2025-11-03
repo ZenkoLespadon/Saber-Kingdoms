@@ -100,4 +100,10 @@ public class KingdomsManager {
     public static List<Kingdom> getAllKingdoms() {
         return List.copyOf(kingdomsJSON.getAllKingdoms().values());
     }
+
+    public static Kingdom getKingdomOfPlayer(Player player) {
+        FPlayer fPlayer = FPlayers.getInstance().getByPlayer(player);
+        if (fPlayer == null || fPlayer.getFaction() == null || fPlayer.getFaction().isWilderness()) return null;
+        return getKingdomByFactionName(fPlayer.getFaction().getTag());
+    }
 }

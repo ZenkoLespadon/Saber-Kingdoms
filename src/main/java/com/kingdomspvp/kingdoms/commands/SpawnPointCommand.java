@@ -48,4 +48,20 @@ public class SpawnPointCommand extends KingdomCommand {
     public String getUsageTranslation() {
         return "/k spawnpoint <nom_du_royaume>";
     }
+
+    @Override
+    public java.util.List<String> tabComplete(KingdomCommandContext context) {
+        int n = context.args.size();
+        if (n == 0) return java.util.Collections.emptyList();
+        if (n == 1) {
+            String pref = context.args.get(0).toLowerCase(java.util.Locale.ROOT);
+            return com.kingdomspvp.kingdoms.services.KingdomsManager.getKingdoms().stream()
+                    .map(com.kingdomspvp.kingdoms.model.Kingdom::getName)
+                    .filter(nm -> nm.toLowerCase(java.util.Locale.ROOT).startsWith(pref))
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .toList();
+        }
+        return java.util.Collections.emptyList();
+    }
+
 }

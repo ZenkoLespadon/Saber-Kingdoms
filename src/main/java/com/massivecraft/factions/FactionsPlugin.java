@@ -286,7 +286,9 @@ public class FactionsPlugin extends MPlugin {
 
             TablistKingdomColors.refreshAll();
 
-            getCommand("k").setExecutor(new KingdomCommandExecutor(FactionsPlugin.this));
+            KingdomCommandExecutor exec = new KingdomCommandExecutor(FactionsPlugin.getInstance());
+            this.getCommand("k").setExecutor(exec);
+            this.getCommand("k").setTabCompleter(exec);
         });
     }
 

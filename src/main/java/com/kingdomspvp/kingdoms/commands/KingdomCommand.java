@@ -13,6 +13,8 @@ public abstract class KingdomCommand {
     protected String helpShort;
     protected List<String> helpLong;
     protected List<KingdomCommand> subCommands;
+    public String permission = null;
+    public boolean hidden = false;
 
     public KingdomCommand() {
         this.aliases = new ArrayList<>();
@@ -113,4 +115,18 @@ public abstract class KingdomCommand {
         message.append("§8- §7").append(helpShort);
         return message.toString();
     }
+
+    public List<String> tabComplete(KingdomCommandContext context) {
+        return java.util.Collections.emptyList();
+    }
+
+    public boolean isHidden() { return hidden; }
+
+    public String getPermission() { return permission; }
+
+    public boolean hasPermission(org.bukkit.command.CommandSender sender) {
+        String p = getPermission();
+        return p == null || p.isEmpty() || sender.hasPermission(p);
+    }
+
 }

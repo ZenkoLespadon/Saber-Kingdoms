@@ -20,6 +20,7 @@ public final class WarEndCommand extends KingdomCommand {
         this.aliases      = Arrays.asList("warend", "endwar", "stopwar");
         this.requiredArgs = Arrays.asList("warId", "gagnant");
         this.helpShort    = ChatColor.GRAY + "Force l'arrêt d'une guerre en donnant la victoire au camp choisi.";
+        this.permission   = "kingdoms.admin.war.end";
     }
 
     @Override
@@ -27,7 +28,7 @@ public final class WarEndCommand extends KingdomCommand {
         // Admin only
         CommandSender s = context.sender;
         if (s instanceof Player) {
-            if (!s.hasPermission("kingdoms.war.end")) {
+            if (!s.hasPermission(this.permission)) {
                 s.sendMessage(ChatUtil.prefixWithWar(ChatColor.RED + "Permission insuffisante."));
                 return false;
             }
@@ -96,4 +97,46 @@ public final class WarEndCommand extends KingdomCommand {
     public String getUsageTranslation() {
         return ChatColor.GREEN + "warend " + ChatColor.WHITE + "<warId> <attaquants|défenseurs|NomRoyaume>";
     }
+
+    @Override
+    public java.util.List<String> tabComplete(KingdomCommandContext context) {
+        int n = context.args.size();
+        if (n <= 0) return java.util.Collections.emptyList();
+
+        // arg0 : id de guerre
+        if (n == 1) {
+            String pref = context.args.get(0).toLowerCase(java.util.Locale.ROOT);
+            return com.kingdomspvp.kingdoms.services.WarManager.getWars().keySet().stream()
+                    .filter(id -> id != null && id.toLowerCase(java.util.Locale.ROOT).startsWith(pref))
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .toList();
+        }
+
+        // arg1 : gagnant (attaquants|défenseurs|NomRoyaume)
+        if (n == 2) {
+            String pref = context.args.get(1).toLowerCase(java.util.Locale.ROOT);
+
+            java.util.List<String> base = java.util.Arrays.asList(
+                    "attaquants", "defenseurs", "défenseurs"
+            );
+
+            // si l’ID est valide, on ajoute les 2 noms de royaumes pour aider
+            String warId = context.args.get(0);
+            com.kingdomspvp.kingdoms.model.War w = com.kingdomspvp.kingdoms.services.WarManager.getWar(warId);
+            java.util.List<String> all = new java.util.ArrayList<>(base);
+            if (w != null) {
+                if (w.getAttackerKingdom() != null) all.add(w.getAttackerKingdom().getName());
+                if (w.getDefenderKingdom() != null) all.add(w.getDefenderKingdom().getName());
+            }
+
+            return all.stream()
+                    .filter(s -> s.toLowerCase(java.util.Locale.ROOT).startsWith(pref))
+                    .distinct()
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .toList();
+        }
+
+        return java.util.Collections.emptyList();
+    }
+
 }

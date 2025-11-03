@@ -26,12 +26,13 @@ public final class WarsListAdminCommand extends KingdomCommand {
         this.requiredArgs = Collections.emptyList();
         this.helpShort    = ChatColor.GRAY + "Liste les guerres à venir, en cours et terminées (admin).";
         this.optionalArgs.put("filtre", ChatColor.DARK_GRAY + " all|upcoming|inprogress|ended");
+        this.permission   = "kingdoms.admin.war.warsadminlist";
     }
 
     @Override
     public boolean validCall(KingdomCommandContext context) {
         CommandSender s = context.sender;
-        if (!s.hasPermission("kingdoms.war.warsadminlist")) {
+        if (!s.hasPermission(this.permission)) {
             s.sendMessage(ChatUtil.prefixWithWar(ChatColor.RED + "Permission insuffisante."));
             return false;
         }

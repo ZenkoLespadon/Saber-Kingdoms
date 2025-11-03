@@ -7,6 +7,7 @@ import com.massivecraft.factions.FactionsPlugin;
 import org.bukkit.ChatColor;
 
 import java.util.Arrays;
+import java.util.List;
 
 public class JoinCommand extends KingdomCommand {
 
@@ -48,6 +49,16 @@ public class JoinCommand extends KingdomCommand {
     @Override
     public String getHelpMessage() {
         return super.getHelpMessage();
+    }
+
+    @Override
+    public List<String> tabComplete(KingdomCommandContext context) {
+        if (context.args.size() == 0) return java.util.Collections.emptyList();
+        if (context.args.size() == 1) {
+            return com.kingdomspvp.kingdoms.services.KingdomsManager.getAllKingdoms()
+                    .stream().map(k -> k.getName()).collect(java.util.stream.Collectors.toList());
+        }
+        return java.util.Collections.emptyList();
     }
 
 }

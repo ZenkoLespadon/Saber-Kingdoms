@@ -11,6 +11,7 @@ public class CreateCommand extends KingdomCommand {
         this.requiredArgs.add("name");
         this.requiredArgs.add("color");
         this.setHelpShort("Create a new Kingdom.");
+        this.permission = "kingdoms.admin.create";
     }
 
     // Java - src/main/java/com/kingdomspvp/kingdoms/commands/CreateCommand.java
@@ -20,7 +21,7 @@ public class CreateCommand extends KingdomCommand {
             context.msg(ChatColor.RED + "This command can only be executed by a player.");
             return;
         }
-        if (!context.player.hasPermission("kingdoms.create")) {
+        if (!context.player.hasPermission(this.permission)) {
             context.msg(ChatColor.RED + "You don't have permission to create a kingdom.");
             return;
         }
@@ -58,5 +59,30 @@ public class CreateCommand extends KingdomCommand {
     public String getUsageTranslation() {
         return "/k create <name> <color>";
     }
+
+    @Override
+    public java.util.List<String> tabComplete(KingdomCommandContext context) {
+        int n = context.args.size();
+        if (n == 0) return java.util.Collections.emptyList(); // nom libre
+        if (n == 1) return java.util.Collections.emptyList(); // nom libre
+
+        if (n == 2) {
+            String pref = context.args.get(1).toLowerCase(java.util.Locale.ROOT);
+            java.util.List<String> colors = new java.util.ArrayList<>();
+            for (org.bukkit.ChatColor c : org.bukkit.ChatColor.values()) {
+                String name = c.name().toLowerCase(java.util.Locale.ROOT);
+                // on garde seulement les couleurs "nommées" utiles (pas les formats & codes spéciaux)
+                if (name.matches("(?i)black|dark_blue|dark_green|dark_aqua|dark_red|dark_purple|gold|gray|dark_gray|blue|green|aqua|red|light_purple|yellow|white")) {
+                    colors.add(name);
+                }
+            }
+            return colors.stream()
+                    .filter(s -> s.startsWith(pref))
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .toList();
+        }
+        return java.util.Collections.emptyList();
+    }
+
 
 }

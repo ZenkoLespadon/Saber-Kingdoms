@@ -18,7 +18,8 @@ public class TpToWarHiddenCommand extends KingdomCommand {
     public TpToWarHiddenCommand() {
         this.aliases = Arrays.asList("_tp_to_war"); // cachée
         this.requiredArgs = Arrays.asList("warId");
-        this.helpShort = null; // pas d'aide publique
+        this.helpShort = null;
+        this.hidden = true;
     }
 
     @Override

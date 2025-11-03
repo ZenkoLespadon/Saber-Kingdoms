@@ -142,4 +142,77 @@ public class DeclareWarCommand extends KingdomCommand {
         return ChatColor.GREEN + "declarewar "
                 + ChatColor.WHITE + "<royaume> <YYYY-MM-DD|TODAY|TOMORROW> <HH:MM>";
     }
+
+    @Override
+    public java.util.List<String> tabComplete(KingdomCommandContext context) {
+        int n = context.args.size();
+        if (n <= 0) return java.util.Collections.emptyList();
+
+        // arg0 : royaume défenseur
+        if (n == 1) {
+            String pref = context.args.get(0).toLowerCase(java.util.Locale.ROOT);
+            // si possible, on exclut le royaume de l’attaquant
+            String attackerName;
+            if (context.player != null) {
+                com.massivecraft.factions.FPlayer fp = com.massivecraft.factions.FPlayers.getInstance().getByPlayer(context.player);
+                if (fp != null && fp.getFaction() != null && !fp.getFaction().isWilderness()) {
+                    com.kingdomspvp.kingdoms.model.Kingdom atk =
+                            com.kingdomspvp.kingdoms.services.KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
+                    if (atk != null) attackerName = atk.getName();
+                    else {
+                        attackerName = null;
+                    }
+                } else {
+                    attackerName = null;
+                }
+            } else {
+                attackerName = null;
+            }
+            return com.kingdomspvp.kingdoms.services.KingdomsManager.getKingdoms().stream()
+                    .map(com.kingdomspvp.kingdoms.model.Kingdom::getName)
+                    .filter(nm -> !nm.equalsIgnoreCase(attackerName))
+                    .filter(nm -> nm.toLowerCase(java.util.Locale.ROOT).startsWith(pref))
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .toList();
+        }
+
+        // arg1 : date (YYYY-MM-DD | TODAY | TOMORROW)
+        if (n == 2) {
+            String pref = context.args.get(1).toLowerCase(java.util.Locale.ROOT);
+            java.time.LocalDate today = java.time.LocalDate.now();
+            java.util.List<String> sugg = new java.util.ArrayList<>();
+            sugg.add("TODAY");
+            sugg.add("TOMORROW");
+            // 5 dates suivantes pratiques
+            for (int i = 0; i < 5; i++) {
+                sugg.add(today.plusDays(i).toString()); // YYYY-MM-DD
+            }
+            return sugg.stream()
+                    .filter(s -> s.toLowerCase(java.util.Locale.ROOT).startsWith(pref))
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .toList();
+        }
+
+        // arg2 : heure (HH:MM), proposer quart d’heures autour de maintenant
+        if (n == 3) {
+            String pref = context.args.get(2).toLowerCase(java.util.Locale.ROOT);
+            java.time.LocalTime now = java.time.LocalTime.now().withSecond(0).withNano(0);
+            // arrondir au prochain quart d’heure
+            int minute = now.getMinute();
+            int nextQ = ((minute + 14) / 15) * 15;
+            if (nextQ >= 60) { now = now.plusHours(1).withMinute(0); } else { now = now.withMinute(nextQ); }
+
+            java.util.List<String> times = new java.util.ArrayList<>();
+            for (int i = 0; i < 8; i++) { // 2h de créneaux tous les 15 min
+                java.time.LocalTime t = now.plusMinutes(15L * i);
+                times.add(String.format("%02d:%02d", t.getHour(), t.getMinute()));
+            }
+            return times.stream()
+                    .filter(s -> s.startsWith(pref))
+                    .toList();
+        }
+
+        return java.util.Collections.emptyList();
+    }
+
 }
