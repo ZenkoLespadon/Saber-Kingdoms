@@ -35,7 +35,7 @@ public class ClaimCommand extends KingdomCommand {
 
         FPlayer fPlayer = FPlayers.getInstance().getByPlayer(context.player);
         if (fPlayer == null || fPlayer.getFaction() == null || fPlayer.getFaction().isWilderness()) {
-            context.msg(ChatColor.RED + "Vous devez être dans une faction pour claim.");
+            context.msg(ChatColor.RED + "Vous devez être dans un royaume pour claim.");
             return;
         }
 
@@ -49,7 +49,7 @@ public class ClaimCommand extends KingdomCommand {
         Location loc = context.player.getLocation();
         Claim claim = ClaimManager.getClaimByCoordinates(loc.getBlockX(), loc.getBlockZ());
         if (claim == null) {
-            context.msg(ChatColor.RED + "Impossible de trouver le claim correspondant ici.");
+            context.msg(ChatColor.RED + "Impossible de trouver le claim correspondant ici. Merci de signaler ce problème à un staff.");
             return;
         }
 

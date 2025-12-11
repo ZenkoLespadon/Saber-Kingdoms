@@ -62,10 +62,10 @@ public final class WarDeclareWizard implements Listener {
 
         FPlayer fp = FPlayers.getInstance().getByPlayer(p);
         Faction fac = (fp != null) ? fp.getFaction() : null;
-        if (fac == null || fac.isWilderness()) { ChatUtil.sendWarMsg(p, ChatColor.RED + "Vous devez être dans une faction pour déclarer la guerre."); return; }
+        if (fac == null || fac.isWilderness()) { ChatUtil.sendWarMsg(p, ChatColor.RED + "Vous devez être dans un royaume pour déclarer la guerre."); return; }
 
         Kingdom atk = KingdomsManager.getKingdomByFactionName(fac.getTag());
-        if (atk == null) { ChatUtil.sendWarMsg(p, ChatColor.RED + "Votre faction n'appartient à aucun royaume."); return; }
+        if (atk == null) { ChatUtil.sendWarMsg(p, ChatColor.RED + "Votre faction n'appartient à aucun royaume. Merci de signaler ce problème à un staff."); return; }
 
         s.attacker = atk;
         STATES.put(p.getUniqueId(), s);

@@ -47,13 +47,13 @@ public class DeclareWarCommand extends KingdomCommand {
 
         FPlayer fp = FPlayers.getInstance().getByPlayer(context.player);
         if (fp == null || fp.getFaction() == null || fp.getFaction().isWilderness()) {
-            ChatUtil.sendWarMsg(context.player, ChatColor.RED + "Vous devez être dans une faction pour déclarer la guerre.");
+            ChatUtil.sendWarMsg(context.player, ChatColor.RED + "Vous devez être dans un royaume pour déclarer la guerre.");
             return;
         }
         Faction playerFaction = fp.getFaction();
         Kingdom attacker = KingdomsManager.getKingdomByFactionName(playerFaction.getTag());
         if (attacker == null) {
-            ChatUtil.sendWarMsg(context.player, ChatColor.RED + "Votre faction n'appartient à aucun royaume.");
+            ChatUtil.sendWarMsg(context.player, ChatColor.RED + "Votre faction n'appartient à aucun royaume. Merci de signaler ce problème à un staff.");
             return;
         }
 
