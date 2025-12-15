@@ -15,7 +15,7 @@ public final class KingdomChatColorListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onChatFallback(AsyncPlayerChatEvent e) {
         Player p = e.getPlayer();
-        Kingdom k = getPlayerKingdom(p);
+        Kingdom k = KingdomsManager.getKingdomOfPlayer(p);
         ChatColor c = (k != null && k.getColor() != null) ? k.getColor() : ChatColor.WHITE;
 
         String line = c + p.getName() + ChatColor.RESET + ": " + e.getMessage();
@@ -23,12 +23,4 @@ public final class KingdomChatColorListener implements Listener {
         // Diffusion manuelle aux destinataires d’origine
         e.getRecipients().forEach(r -> r.sendMessage(line));
     }
-
-
-    private static Kingdom getPlayerKingdom(Player p) {
-        FPlayer fp = FPlayers.getInstance().getByPlayer(p);
-        if (fp == null || fp.getFaction() == null || fp.getFaction().isWilderness()) return null;
-        return KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
-    }
-
 }

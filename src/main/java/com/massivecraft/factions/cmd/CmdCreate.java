@@ -1,5 +1,6 @@
 package com.massivecraft.factions.cmd;
 
+import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.services.FPlayerManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.massivecraft.factions.*;
@@ -106,8 +107,7 @@ public class CmdCreate extends FCommand {
         }
 
         context.sender.sendMessage(getFPlayerFaction((Player) context.sender).getTag());
-        FPlayerManager.getPlayerKingdom(context.player).addFaction(faction);
-        KingdomsManager.saveKingdoms();
+        KingdomsManager.addFactionInKingdom(KingdomsManager.getKingdomOfPlayer(context.player), faction);
 
 
         // finish setting up the Faction

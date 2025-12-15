@@ -111,7 +111,7 @@ public final class TablistKingdomColors implements Listener {
     private static void assign(Player p) {
         if (p == null || !p.isOnline()) return;
 
-        Kingdom k = getPlayerKingdom(p);
+        Kingdom k = KingdomsManager.getKingdomOfPlayer(p);
         ChatColor c = (k != null && k.getColor() != null) ? k.getColor() : ChatColor.WHITE;
 
         Scoreboard s = sb();
@@ -146,11 +146,5 @@ public final class TablistKingdomColors implements Listener {
         if (current != null && current.hasEntry(p.getName())) {
             current.removeEntry(p.getName());
         }
-    }
-
-    private static Kingdom getPlayerKingdom(Player p) {
-        FPlayer fp = FPlayers.getInstance().getByPlayer(p);
-        if (fp == null || fp.getFaction() == null || fp.getFaction().isWilderness()) return null;
-        return KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
     }
 }

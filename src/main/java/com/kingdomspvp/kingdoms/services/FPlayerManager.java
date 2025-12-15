@@ -24,11 +24,6 @@ public class FPlayerManager {
         return fPlayer.getFaction();
     }
 
-    public static Kingdom getPlayerKingdom(Player player) {
-        Faction faction = getFPlayerFaction(player);
-        return KingdomsManager.getKingdomByFactionName(faction.getTag());
-    }
-
     public static void handleRole(Player player) {
         Role role = getFPlayerRole(player);
         if (role == Role.MODERATOR) {

@@ -5,6 +5,7 @@ import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.services.FPlayerManager;
+import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -44,7 +45,8 @@ public class TpToWarHiddenCommand extends KingdomCommand {
             context.msg(ChatColor.RED + "Tu n'es pas inscrit à cette guerre.");
             return;
         }
-        Kingdom k = FPlayerManager.getPlayerKingdom(context.player);
+
+        Kingdom k = KingdomsManager.getKingdomOfPlayer(context.player);
         if (k == null || (!k.equals(w.getAttackerKingdom()) && !k.equals(w.getDefenderKingdom()))) {
             context.msg(ChatColor.RED + "Tu n'appartiens pas à un royaume impliqué.");
             return;

@@ -220,7 +220,7 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         container.addExtra(button);
 
         for (Player p : Bukkit.getOnlinePlayers()) {
-            Kingdom k = getPlayerKingdom(p);
+            Kingdom k = KingdomsManager.getKingdomOfPlayer(p);
             if (k == null) continue;
             if (k.equals(w.getAttackerKingdom()) || k.equals(w.getDefenderKingdom())) {
                 p.spigot().sendMessage(container);
@@ -362,7 +362,8 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         if (war == null) return false;
         if (war.getStatus() == WarStatus.ENDED) return false;
 
-        Kingdom k = getPlayerKingdom(player);
+        Kingdom k = KingdomsManager.getKingdomOfPlayer(player);
+
         if (k == null) return false;
         if (!k.equals(war.getAttackerKingdom()) && !k.equals(war.getDefenderKingdom())) return false;
 
@@ -396,13 +397,6 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         }
 
         return added;
-    }
-
-
-    private static Kingdom getPlayerKingdom(Player p) {
-        FPlayer fp = FPlayers.getInstance().getByPlayer(p);
-        if (fp == null || fp.getFaction() == null || fp.getFaction().isWilderness()) return null;
-        return KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
     }
 
     // ------------------------------------------------------------------------

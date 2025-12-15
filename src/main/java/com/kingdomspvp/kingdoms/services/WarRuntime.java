@@ -321,7 +321,7 @@ public final class WarRuntime {
             if (!isRegistered(p.getUniqueId())) {
                 ChatUtil.sendWarMsg(p, org.bukkit.ChatColor.RED + "Tu n'es pas inscrit à cette guerre."); return;
             }
-            Kingdom pk = getPlayerKingdom(p);
+            Kingdom pk = KingdomsManager.getKingdomOfPlayer(p);
             if (pk == null) { ChatUtil.sendWarMsg(p, org.bukkit.ChatColor.RED + "Royaume inconnu."); return; }
             if (attackedClaim == null) { ChatUtil.sendWarMsg(p, org.bukkit.ChatColor.RED + "La zone d'affrontement n'est pas prête."); return; }
 
@@ -466,12 +466,6 @@ public final class WarRuntime {
 
         private boolean isRegistered(UUID id) {
             return war.getAttackerPlayers().contains(id) || war.getDefenderPlayers().contains(id);
-        }
-
-        private static Kingdom getPlayerKingdom(Player p) {
-            FPlayer fp = FPlayers.getInstance().getByPlayer(p);
-            if (fp == null || fp.getFaction() == null || fp.getFaction().isWilderness()) return null;
-            return KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
         }
 
         private static World getOverworld() {

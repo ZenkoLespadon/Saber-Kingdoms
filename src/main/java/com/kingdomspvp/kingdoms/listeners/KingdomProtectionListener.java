@@ -30,7 +30,8 @@ public class KingdomProtectionListener implements Listener {
         if (claim == null) return true;
         if (claim.getKingdomName().equalsIgnoreCase("None")) return true;
 
-        String playerKingdomName = Objects.requireNonNull(KingdomsManager.getKingdomOfPlayer(player)).getName();
+        String playerKingdomName = Objects.requireNonNull(KingdomsManager.
+                getKingdomOfPlayer(player)).getName();
         return playerKingdomName.equalsIgnoreCase(claim.getKingdomName());
     }
 

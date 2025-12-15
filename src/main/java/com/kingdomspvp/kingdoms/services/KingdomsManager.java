@@ -90,6 +90,12 @@ public class KingdomsManager {
 
     public static void removeFactionInKingdom(Kingdom kingdom, Faction faction) {
         kingdom.removeFaction(faction);
+        saveKingdoms();
+    }
+
+    public static void addFactionInKingdom(Kingdom kingdom, Faction faction) {
+        kingdom.addFaction(faction);
+        saveKingdoms();
     }
 
     // Sauvegarde manuelle des royaumes
@@ -102,8 +108,14 @@ public class KingdomsManager {
     }
 
     public static Kingdom getKingdomOfPlayer(Player player) {
-        FPlayer fPlayer = FPlayers.getInstance().getByPlayer(player);
-        if (fPlayer == null || fPlayer.getFaction() == null || fPlayer.getFaction().isWilderness()) return null;
-        return getKingdomByFactionName(fPlayer.getFaction().getTag());
+        if (player == null) return null;
+
+        FPlayer fp = FPlayers.getInstance().getByPlayer(player);
+        if (fp == null) return null;
+
+        Faction faction = fp.getFaction();
+        if (faction == null || faction.isWilderness()) return null;
+
+        return getKingdomByFactionName(faction.getTag());
     }
 }
