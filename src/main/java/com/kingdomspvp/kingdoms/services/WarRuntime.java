@@ -230,12 +230,16 @@ public final class WarRuntime {
 
         private void endWar(boolean attackersInstantWin) {
             final boolean attackersWon = (pointsAttackers >= targetPoints);
-            double percent = (targetPoints > 0.0) ? (pointsAttackers / targetPoints * 100.0) : 0.0;
+
+            double percent = (targetPoints > 0.0)
+                    ? (pointsAttackers / targetPoints * 100.0)
+                    : 0.0;
             if (percent < 0.0) percent = 0.0;
             if (percent > 100.0) percent = 100.0;
 
             String atkName = ChatUtil.kingdomName(war.getAttackerKingdom());
             String defName = ChatUtil.kingdomName(war.getDefenderKingdom());
+
             String roundMsg = attackersWon
                     ? ChatUtil.prefixWithWar(
                     org.bukkit.ChatColor.GOLD + "Fin du round " + roundIndex + " — "
@@ -252,40 +256,53 @@ public final class WarRuntime {
             );
 
             WarManager.sendToRegisteredPlayers(
-                    war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(roundMsg));
+                    war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(roundMsg)
+            );
 
+            // ✔ TRANSFERT DU CLAIM SI LES ATTAQUANTS GAGNENT CE ROUND
+            if (attackersWon && attackedClaim != null) {
+                ClaimManager.transferClaimToKingdom(attackedClaim, war.getAttackerKingdom().getName());
+            }
+
+            // ✔ SI CE N’ÉTAIT PAS LE DERNIER ROUND → PRÉPARATION ROUND SUIVANT
             if (attackersWon && roundIndex < MAX_ROUNDS) {
                 int nextRound = roundIndex + 1;
+
                 WarManager.sendToAttackers(war, WarManager.buildRoundStartMessage(nextRound));
                 WarManager.sendToDefenders(war, WarManager.buildRoundStartMessage(nextRound));
                 WarManager.sendToAttackers(war, WarManager.buildWaitForRoundMessage(war.getDefenderKingdom()));
+
                 roundIndex = nextRound;
                 roundGainMultiplier *= ROUND_GAIN_FACTOR;
+
                 this.combatActive = false;
                 this.attackedClaim = null;
                 this.pointsAttackers = 0.0;
                 this.defendersKills = 0;
+
                 WarManager.prepareNextRound(war, true);
-                return;
+                return; // ✔ NE PAS NETTOYER, LA GUERRE CONTINUE
             }
 
-            // --- NETTOYAGE FINAL ---
+            // ✔ SI ON ARRIVE ICI → LA GUERRE EST FINIE (DERNIER ROUND OU DÉFAITE ATTAQUANTS)
+            // --- CLEANUP FINAL ---
             com.kingdomspvp.kingdoms.utils.ClaimVisualization.stopWarOutlines(war);
 
             war.setStatus(WarStatus.ENDED);
             WarManager.getWars().put(war.getId(), war);
 
-            for (java.util.UUID id : war.getAttackerPlayers()) {
-                org.bukkit.entity.Player p = org.bukkit.Bukkit.getPlayer(id);
-                if (p != null) com.kingdomspvp.kingdoms.services.WarManager.clearSidebarFor(p);
+            for (UUID id : war.getAttackerPlayers()) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null) WarManager.clearSidebarFor(p);
             }
-            for (java.util.UUID id : war.getDefenderPlayers()) {
-                org.bukkit.entity.Player p = org.bukkit.Bukkit.getPlayer(id);
-                if (p != null) com.kingdomspvp.kingdoms.services.WarManager.clearSidebarFor(p);
+            for (UUID id : war.getDefenderPlayers()) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null) WarManager.clearSidebarFor(p);
             }
 
-            stop(false);
+            stop(false); // ✔ coupe ticker + bossbars + UI proprement
         }
+
 
 
         private String winnerLine() { return winnerLine(false); }

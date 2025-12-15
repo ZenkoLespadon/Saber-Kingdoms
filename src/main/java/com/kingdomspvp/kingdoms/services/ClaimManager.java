@@ -10,7 +10,8 @@ public class ClaimManager {
 
     private static final ClaimsJSON claimsJSON = new ClaimsJSON();
 
-    public static final int MAP_SIZE = 1024;
+
+    public static final int MAP_SIZE = 1536;
     public static final int CLAIM_SIZE = 64;
     public static final int HALF_MAP = MAP_SIZE / 2;
 
