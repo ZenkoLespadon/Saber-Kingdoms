@@ -199,7 +199,6 @@ public class FactionsPlugin extends MPlugin {
 
             for (Listener eventListener : new Listener[]{
                     new TributeInventoryHandler(),
-                    new FactionsChatListener(),
                     new FactionsEntityListener(),
                     new FactionsExploitListener(),
                     new FactionsBlockListener(),
@@ -283,6 +282,7 @@ public class FactionsPlugin extends MPlugin {
             getServer().getPluginManager().registerEvents(new KingdomChatColorListener(), this);
             getServer().getPluginManager().registerEvents(new TablistKingdomColors(this, 1200L), this);
             getServer().getPluginManager().registerEvents(new AutoClaimListener(), this);
+            getServer().getPluginManager().registerEvents(new KingdomChatFormatListener(), this);
 
             TablistKingdomColors.refreshAll();
 
