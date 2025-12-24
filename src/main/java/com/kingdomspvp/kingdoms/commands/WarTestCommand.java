@@ -28,7 +28,7 @@ public class WarTestCommand extends KingdomCommand {
     @Override
     public void perform(KingdomCommandContext context) {
         if (context.player == null) {
-            ChatUtil.sendWarMsg(null, ChatColor.RED + "Cette commande ne peut être exécutée que par un joueur.");
+            ChatUtil.sendWarMsg(null, ChatColor.RED + "Commande réservée aux joueurs.");
             return;
         }
         String sub = context.args.isEmpty() ? "status" : context.args.get(0).toLowerCase();
