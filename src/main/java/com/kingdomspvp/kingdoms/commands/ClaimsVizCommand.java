@@ -47,7 +47,8 @@ public class ClaimsVizCommand extends KingdomCommand {
         stopGlobal();
 
         final int periodTicks = 10; // 0.5s
-        final int maxRuns = (seconds * 20) / periodTicks;
+        final int nbTicksPerSecond = 20;
+        final int maxRuns = (seconds * nbTicksPerSecond) / periodTicks;
 
         globalTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(
                 plugin,

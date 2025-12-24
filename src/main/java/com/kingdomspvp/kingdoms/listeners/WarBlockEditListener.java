@@ -21,7 +21,10 @@ import java.util.Collection;
 
 public final class WarBlockEditListener implements Listener {
 
-    private static final long REVERT_AFTER_TICKS = 20L * 20L; // 20 secondes
+    static long nbTicksPerSecond = 20L;
+    static long nbSeconds = 20L;
+
+    private static final long REVERT_AFTER_TICKS = nbTicksPerSecond * nbSeconds;
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onBlockBreak(BlockBreakEvent e) {

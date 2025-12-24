@@ -12,7 +12,6 @@ public class War {
 
     private boolean combatStarted = false;
 
-
     private final Set<UUID> attackerPlayers = new HashSet<>();
     private final Set<UUID> defenderPlayers = new HashSet<>();
 

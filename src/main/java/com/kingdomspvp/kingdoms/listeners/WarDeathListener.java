@@ -15,7 +15,11 @@ import java.util.UUID;
 // TODO : Fusionner la branche war avec master
 
 public class WarDeathListener implements Listener {
-    // Java
+
+
+    long nbTicksPerSecond = 20L;
+    long delayBeforeTpMessageSeconds = 15L;
+
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
 
@@ -31,7 +35,7 @@ public class WarDeathListener implements Listener {
         Bukkit.getScheduler().runTaskLater(
                 com.massivecraft.factions.FactionsPlugin.getInstance(),
                 () -> sendTpToWarMessage(playerId, war),
-                20L * 15 // 30 secondes
+                nbTicksPerSecond * delayBeforeTpMessageSeconds // 30 secondes
         );
     }
 
