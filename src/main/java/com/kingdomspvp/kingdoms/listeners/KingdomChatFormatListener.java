@@ -41,16 +41,24 @@ public final class KingdomChatFormatListener implements Listener {
         String group = (user != null) ? user.getPrimaryGroup() : "roturier";
         GradeFormat grade = formatGrade(group);
 
+        // ----- FORMAT DU NOM DU JOUEUR -----
+        String nameFormat = grade.color.toString();
+        if (grade.bold) {
+            nameFormat += ChatColor.BOLD;
+        }
+        nameFormat += p.getName();
+
         // ----- FORMAT FINAL -----
         String message =
-                grade.prefix + " " +
+                grade.prefix + ChatColor.RESET + " " +
                         kingdomColor + "[" + factionName + "] " +
-                        (grade.bold ? ChatColor.BOLD.toString() : "") + grade.color + p.getName() +
+                        nameFormat +
                         ChatColor.GRAY + " : " +
-                        ChatColor.WHITE + e.getMessage();
+                        grade.messageColor + e.getMessage();
 
         e.setCancelled(true);
         e.getRecipients().forEach(r -> r.sendMessage(message));
+
     }
 
     private static class GradeFormat {
@@ -113,11 +121,15 @@ public final class KingdomChatFormatListener implements Listener {
                             ChatColor.DARK_AQUA
                     );
 
-            case "moderateur+" ->
-                    new GradeFormat(
-                            ChatColor.DARK_BLUE + "[Modérateur]",
-                            ChatColor.DARK_BLUE
-                    );
+            case "moderateur+" -> new GradeFormat(
+                    ChatColor.DARK_BLUE + "" + ChatColor.BOLD + "[" +
+                            ChatColor.DARK_AQUA + "" + ChatColor.BOLD + "Modérateur+" +
+                            ChatColor.DARK_BLUE + "" + ChatColor.BOLD + "]",
+                    ChatColor.DARK_AQUA,
+                    ChatColor.AQUA,
+                    true
+            );
+
 
             case "builder" ->
                     new GradeFormat(
@@ -131,18 +143,14 @@ public final class KingdomChatFormatListener implements Listener {
                             ChatColor.DARK_RED
                     );
 
-            case "administrateur" ->
-                    new GradeFormat(
-                            ChatColor.BLACK + "" + ChatColor.BOLD + "[" +
-                                    ChatColor.DARK_RED + "Administrateur" +
-                                    ChatColor.BLACK + "]",
-                            ChatColor.DARK_RED,
-                            ChatColor.RED,
-                            true
-                    );
-
-
-
+            case "administrateur" -> new GradeFormat(
+                    ChatColor.BLACK + "" + ChatColor.BOLD + "[" +
+                            ChatColor.DARK_RED + "" + ChatColor.BOLD + "Administrateur" +
+                            ChatColor.BLACK + "" + ChatColor.BOLD + "]",
+                    ChatColor.DARK_RED,
+                    ChatColor.RED,
+                    true
+            );
 
             default ->
                     new GradeFormat(ChatColor.GRAY + "[Roturier]", ChatColor.GRAY);
