@@ -10,7 +10,7 @@ public class CreateCommand extends KingdomCommand {
         this.aliases.add("create");
         this.requiredArgs.add("name");
         this.requiredArgs.add("color");
-        this.setHelpShort("Create a new Kingdom.");
+        this.setHelpShort("Créer un nouveau royaume.");
         this.permission = "kingdoms.admin.create";
     }
 
@@ -18,11 +18,11 @@ public class CreateCommand extends KingdomCommand {
     @Override
     public void perform(KingdomCommandContext context) {
         if (context.player == null) {
-            context.msg(ChatColor.RED + "This command can only be executed by a player.");
+            context.msg(ChatColor.RED + "Commande réservée aux joueurs.");
             return;
         }
         if (!context.player.hasPermission(this.permission)) {
-            context.msg(ChatColor.RED + "You don't have permission to create a kingdom.");
+            context.msg(ChatColor.RED + "Vous n'avez pas la permission de créer un royaume.");
             return;
         }
         if (context.args.size() < 2) {
@@ -34,7 +34,7 @@ public class CreateCommand extends KingdomCommand {
         String colorName = context.args.get(1).toUpperCase();
 
         if (KingdomsManager.getKingdomByName(kingdomName) != null) {
-            context.msg(ChatColor.RED + "A kingdom with this name already exists.");
+            context.msg(ChatColor.RED + "Un royaume avec ce nom existe déjà.");
             return;
         }
 
@@ -57,7 +57,7 @@ public class CreateCommand extends KingdomCommand {
 
     @Override
     public String getUsageTranslation() {
-        return "/k create <name> <color>";
+        return "/k create <nom> <couleur>";
     }
 
     @Override

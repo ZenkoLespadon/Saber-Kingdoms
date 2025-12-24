@@ -10,7 +10,7 @@ public class MembersCommand extends KingdomCommand {
 
     public MembersCommand() {
         this.aliases.add("members");
-        this.helpShort = "Displays the list of kingdom members sorted by power.";
+        this.helpShort = "Affiche la liste des membres d'un royaume triés par power";
     }
 
     @Override
@@ -19,11 +19,11 @@ public class MembersCommand extends KingdomCommand {
         List<KPlayer> sortedKPlayers = KPlayerManager.getSortedKPlayers();
 
         if (sortedKPlayers.isEmpty()) {
-            context.msg(ChatColor.RED + "There are no members in the kingdom.");
+            context.msg(ChatColor.RED + "Il n'y a personne dans le royaume.");
             return;
         }
 
-        context.msg(ChatColor.GOLD + "Kingdom Members Sorted by Power:");
+        context.msg(ChatColor.GOLD + "Membres du royaume triés par power:");
 
         for (KPlayer kPlayer : sortedKPlayers) {
             String playerName = kPlayer.getPlayer().getName();

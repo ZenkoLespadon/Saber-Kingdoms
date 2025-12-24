@@ -76,7 +76,7 @@ public class KingdomCommandExecutor implements CommandExecutor, TabCompleter {
             }
             player.sendMessage("§6§l--------------------------------------------");
         } else {
-            context.msg("This command can only be used by a player.");
+            context.msg("Cette commande ne peut être exécutée que par un joueur.");
         }
     }
 

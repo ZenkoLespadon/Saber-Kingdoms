@@ -15,7 +15,7 @@ public class SetKingdomCommand extends KingdomCommand {
     public SetKingdomCommand() {
         this.aliases = Arrays.asList("setkingdom", "sk");
         this.requiredArgs = Arrays.asList("player", "kingdom");
-        this.helpShort = ChatColor.GRAY + "Met un joueur dans un royaume (admin)";
+        this.helpShort = ChatColor.GRAY + "Déplace un joueur dans un royaume (admin)";
         this.permission = "kingdoms.admin.setkingdom";
     }
 

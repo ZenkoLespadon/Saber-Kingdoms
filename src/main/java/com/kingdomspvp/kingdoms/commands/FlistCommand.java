@@ -27,7 +27,7 @@ public class FlistCommand extends KingdomCommand {
         KingdomsManager kingdomsManager = plugin.getKingdomsManager();
 
         if (!(sender instanceof Player)) {
-            context.msg("Cette commande ne peut être exécutée que par un joueur.");
+            context.msg("Commande réservée aux joueurs.");
             return;
         }
 

@@ -35,6 +35,7 @@ public final class TablistKingdomColors implements Listener {
             ChatColor.GRAY, ChatColor.DARK_GRAY,
             ChatColor.WHITE, ChatColor.BLACK
     };
+
     private static final Map<ChatColor, String> NAME_CACHE = new HashMap<>();
 
     private static Scoreboard sb() { return Bukkit.getScoreboardManager().getMainScoreboard(); }

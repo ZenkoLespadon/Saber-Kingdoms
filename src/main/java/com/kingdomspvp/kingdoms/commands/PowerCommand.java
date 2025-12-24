@@ -9,13 +9,13 @@ public class PowerCommand extends KingdomCommand {
 
     public PowerCommand() {
         this.aliases.add("power");
-        this.helpShort = "Displays your current power.";
+        this.helpShort = "Affiche votre power actuel.";
     }
 
     @Override
     public void perform(KingdomCommandContext context) {
         if (context.player == null) {
-            context.msg(ChatColor.RED + "This command can only be used by players.");
+            context.msg(ChatColor.RED + "Commande réservée aux joueurs.");
             return;
         }
 
@@ -23,14 +23,14 @@ public class PowerCommand extends KingdomCommand {
 
         // Récupération du KPlayer associé au joueur
         if (!KPlayerManager.kPlayerInKPlayers(player)) {
-            context.msg(ChatColor.RED + "You are not registered as a KPlayer.");
+            context.msg(ChatColor.RED + "Vous n'avez pas de KPlayer associé. Veuillez contacter un administrateur.");
             return;
         }
 
         KPlayer kPlayer = KPlayerManager.getKPlayerOfPlayer(player);
         Integer power = kPlayer.getPower();
 
-        context.msg(ChatColor.GREEN + "Your current power is: " + ChatColor.YELLOW + power);
+        context.msg(ChatColor.GREEN + "Votre power est : " + ChatColor.YELLOW + power);
     }
 
     @Override

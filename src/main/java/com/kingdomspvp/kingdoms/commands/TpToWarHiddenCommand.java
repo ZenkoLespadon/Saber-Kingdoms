@@ -48,7 +48,7 @@ public class TpToWarHiddenCommand extends KingdomCommand {
 
         Kingdom k = KingdomsManager.getKingdomOfPlayer(context.player);
         if (k == null || (!k.equals(w.getAttackerKingdom()) && !k.equals(w.getDefenderKingdom()))) {
-            context.msg(ChatColor.RED + "Tu n'appartiens pas à un royaume impliqué.");
+            context.msg(ChatColor.RED + "Tu n'appartiens pas à un royaume impliqué. Merci de contacter un administrateur si vous voyez ce message.");
             return;
         }
 

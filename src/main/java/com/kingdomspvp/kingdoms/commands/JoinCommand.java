@@ -20,7 +20,7 @@ public class JoinCommand extends KingdomCommand {
     @Override
     public void perform(KingdomCommandContext context) {
         if (context.player == null) {
-            context.msg(ChatColor.GRAY + "Cette commande ne peut être exécutée que par un joueur.");
+            context.msg(ChatColor.GRAY + "Commande réservée aux joueurs.");
             return;
         }
 
