@@ -9,10 +9,7 @@ import com.kingdomspvp.kingdoms.model.Claim;
 import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
-import com.kingdomspvp.kingdoms.utils.Callback;
-import com.kingdomspvp.kingdoms.utils.ChatUtil;
-import com.kingdomspvp.kingdoms.utils.ClaimVisualization;
-import com.kingdomspvp.kingdoms.utils.WarsJSON;
+import com.kingdomspvp.kingdoms.utils.*;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.FactionsPlugin;
@@ -67,7 +64,7 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
     public static Duration JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(30); // ex. passez à 5 min en beta
 
     /** Taille de claim (en blocs), reprise du ClaimManager. */
-    public static final int CLAIM_SIZE = ClaimManager.CLAIM_SIZE;
+    public static final int CLAIM_SIZE = ClaimManager.getActiveClaimSize();
 
     private static final WarsJSON warsJSON = new WarsJSON();
 

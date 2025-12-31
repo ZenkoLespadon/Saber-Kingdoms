@@ -6,6 +6,7 @@ import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.utils.ChatUtil;
+import com.kingdomspvp.kingdoms.utils.KingdomsConfig;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -472,7 +473,7 @@ public final class WarRuntime {
             for (World w : Bukkit.getWorlds()) if (w.getEnvironment() == World.Environment.NORMAL) return w;
             return Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0);
         }
-        private static final int CLAIM_SIZE = ClaimManager.CLAIM_SIZE;
+        private static final int CLAIM_SIZE = ClaimManager.getActiveClaimSize();
         private static org.bukkit.Location getClaimCenter(Claim c) {
             World world = getOverworld(); if (world == null) return null;
             int cx = c.getGridX() * CLAIM_SIZE + CLAIM_SIZE / 2;

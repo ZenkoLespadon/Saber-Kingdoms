@@ -27,12 +27,74 @@ public class ClaimsJSON {
     }
 
     public void forceSave(boolean sync) {
-        saveCore(path, claims, sync);
+        ClaimsFile file = new ClaimsFile();
+        file.meta = loadExistingMeta();
+        file.claims = new HashMap<>(this.claims);
+
+        DiscUtil.writeCatch(
+                path,
+                FactionsPlugin.getInstance().getGson().toJson(file),
+                sync
+        );
     }
+
+    private ClaimsFile.Meta loadExistingMeta() {
+        try {
+            if (Files.notExists(this.path)) return null;
+
+            String content = DiscUtil.readCatch(this.path);
+            if (content == null || content.isEmpty()) return null;
+
+            ClaimsFile file = FactionsPlugin.getInstance().getGson()
+                    .fromJson(content, ClaimsFile.class);
+
+            return file != null ? file.meta : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
 
     private boolean saveCore(Path target, Map<String, Claim> entities, boolean sync) {
         return DiscUtil.writeCatch(target, FactionsPlugin.getInstance().getGson().toJson(entities), sync);
     }
+
+    public Integer getMetaClaimSize() {
+        if (Files.notExists(this.path)) return null;
+
+        try {
+            String content = DiscUtil.readCatch(this.path);
+            if (content == null || content.isEmpty()) return null;
+
+            ClaimsFile file = FactionsPlugin.getInstance().getGson()
+                    .fromJson(content, ClaimsFile.class);
+
+            if (file == null || file.meta == null) return null;
+            return file.meta.claimSize;
+
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public Integer getMetaMapSize() {
+        if (Files.notExists(this.path)) return null;
+
+        try {
+            String content = DiscUtil.readCatch(this.path);
+            if (content == null || content.isEmpty()) return null;
+
+            ClaimsFile file = FactionsPlugin.getInstance().getGson()
+                    .fromJson(content, ClaimsFile.class);
+
+            if (file == null || file.meta == null) return null;
+            return file.meta.mapSize;
+
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
 
     // Chargement
     public void load(Callback<Boolean> success) {
@@ -55,19 +117,43 @@ public class ClaimsJSON {
         }
 
         String content = DiscUtil.readCatch(this.path);
-        if (content == null) {
+        if (content == null || content.isEmpty()) {
             finish.onFinish(null);
             return;
         }
 
-        Map<String, Claim> data = FactionsPlugin.getInstance().getGson().fromJson(content, new TypeToken<Map<String, Claim>>() {}.getType());
-        if (data == null) {
-            finish.onFinish(null);
-            return;
-        }
+        try {
+            ClaimsFile file = FactionsPlugin.getInstance().getGson()
+                    .fromJson(content, ClaimsFile.class);
 
-        finish.onFinish(data);
+            if (file == null || file.claims == null) {
+                finish.onFinish(new HashMap<>());
+                return;
+            }
+
+            finish.onFinish(file.claims);
+
+        } catch (Exception e) {
+            Logger.print("Erreur parsing claims.json, fichier invalide", Logger.PrefixType.WARNING);
+            e.printStackTrace();
+            finish.onFinish(null);
+        }
     }
+    // dans ClaimsJSON
+    public void clearNoSave() {
+        this.claims.clear();
+    }
+
+    public void addClaimNoSave(Claim claim) {
+        this.claims.put(key(claim), claim);
+    }
+
+    // expose path si besoin pour /k reload hard
+    public java.nio.file.Path getPath() {
+        return this.path;
+    }
+
+
 
     // Gestion des claims
     public void addClaim(Claim claim) {
@@ -79,6 +165,21 @@ public class ClaimsJSON {
         this.claims.remove(key(claim));
         forceSave();
     }
+
+    public void setMeta(int mapSize, int claimSize) {
+        ClaimsFile file = new ClaimsFile();
+        file.meta = new ClaimsFile.Meta();
+        file.meta.mapSize = mapSize;
+        file.meta.claimSize = claimSize;
+        file.claims = new HashMap<>(this.claims);
+
+        DiscUtil.writeCatch(
+                this.path,
+                FactionsPlugin.getInstance().getGson().toJson(file),
+                true
+        );
+    }
+
 
     public Claim getClaim(int gridX, int gridZ) {
         return this.claims.get(key(gridX, gridZ));
@@ -101,5 +202,14 @@ public class ClaimsJSON {
         forceSave();
     }
 
+    public class ClaimsFile {
+        public Meta meta;
+        public Map<String, Claim> claims;
+
+        public static class Meta {
+            public int claimSize;
+            public int mapSize;
+        }
+    }
 }
 

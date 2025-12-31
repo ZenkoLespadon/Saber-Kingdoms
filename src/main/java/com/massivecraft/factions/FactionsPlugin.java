@@ -10,6 +10,7 @@ import com.kingdomspvp.kingdoms.listeners.*;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
+import com.kingdomspvp.kingdoms.utils.KingdomsConfig;
 import com.kingdomspvp.kingdoms.utils.LocalDateTimeAdapter;
 import com.massivecraft.factions.addon.AddonManager;
 import com.massivecraft.factions.addon.FactionsAddon;
@@ -242,6 +243,14 @@ public class FactionsPlugin extends MPlugin {
             try {
                 for (Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
                     WarManager.clearSidebarFor(p);
+                }
+
+                KingdomsConfig.ensureDefaultConfig(this);
+
+                if (!KingdomsConfig.load(this)) {
+                    getLogger().severe("Erreur de chargement de la configuration.");
+                    getServer().getPluginManager().disablePlugin(this);
+                    return;
                 }
 
                 KingdomsManager.loadKingdoms(success -> {

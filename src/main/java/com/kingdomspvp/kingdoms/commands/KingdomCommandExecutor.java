@@ -50,7 +50,9 @@ public class KingdomCommandExecutor implements CommandExecutor, TabCompleter {
         this.rootCommand.addSubCommand(new WarsListAdminCommand());
         this.rootCommand.addSubCommand(new WarEndCommand());
         this.rootCommand.addSubCommand(new SetKingdomCommand());
-        this.rootCommand.addSubCommand(new AutoClaimCommand(plugin));    }
+        this.rootCommand.addSubCommand(new AutoClaimCommand(plugin));
+        this.rootCommand.addSubCommand(new ReloadCommand(plugin));
+    }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {

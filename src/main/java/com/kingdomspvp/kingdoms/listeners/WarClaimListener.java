@@ -32,9 +32,16 @@ public class WarClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onMove(PlayerMoveEvent e) {
-        // CLAIM_SIZE = 64 → >> 6
-        if ((e.getFrom().getBlockX() >> 6) == (e.getTo().getBlockX() >> 6)
-                && (e.getFrom().getBlockZ() >> 6) == (e.getTo().getBlockZ() >> 6)) {
+
+        int claimSize = ClaimManager.getActiveClaimSize();
+
+        int fromGX = Math.floorDiv(e.getFrom().getBlockX(), claimSize);
+        int fromGZ = Math.floorDiv(e.getFrom().getBlockZ(), claimSize);
+        int toGX   = Math.floorDiv(e.getTo().getBlockX(),   claimSize);
+        int toGZ   = Math.floorDiv(e.getTo().getBlockZ(),   claimSize);
+
+        // Pas de changement de claim
+        if (fromGX == toGX && fromGZ == toGZ) {
             return;
         }
 
@@ -42,16 +49,26 @@ public class WarClaimListener implements Listener {
         FPlayer fp = FPlayers.getInstance().getByPlayer(p);
         if (fp == null || fp.getFaction() == null || fp.getFaction().isWilderness()) return;
 
-        // 1) Détection premier assaut (fenêtre)
+        // 1) Détection du premier assaut (fenêtre de détection)
         if (!activeDetectionWars.isEmpty()) {
-            Claim to = ClaimManager.getClaimByCoordinates(e.getTo().getBlockX(), e.getTo().getBlockZ());
+            Claim to = ClaimManager.getClaimByCoordinates(
+                    e.getTo().getBlockX(),
+                    e.getTo().getBlockZ()
+            );
+
             if (to != null) {
-                var playerKingdom = KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
+                Kingdom playerKingdom =
+                        KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
+
                 if (playerKingdom != null) {
                     for (War w : activeDetectionWars.values()) {
                         if (w.getStatus() != WarStatus.INPROGRESS || w.hasCombatStarted()) continue;
-                        boolean isDefClaim = w.getDefenderKingdom().getName().equalsIgnoreCase(to.getKingdomName());
-                        boolean isAttacker = playerKingdom.equals(w.getAttackerKingdom());
+
+                        boolean isDefClaim =
+                                w.getDefenderKingdom().getName().equalsIgnoreCase(to.getKingdomName());
+                        boolean isAttacker =
+                                playerKingdom.equals(w.getAttackerKingdom());
+
                         if (isDefClaim && isAttacker) {
                             WarManager.handleFirstClaimAttacked(w, to);
                             break;
@@ -61,8 +78,9 @@ public class WarClaimListener implements Listener {
             }
         }
 
-        // 2) Messages entrer/sortir du claim attaqué (pendant combat)
-        var playerKingdom = KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
+        // 2) Messages entrée / sortie du claim attaqué (combat en cours)
+        Kingdom playerKingdom =
+                KingdomsManager.getKingdomByFactionName(fp.getFaction().getTag());
         if (playerKingdom == null) return;
 
         for (War w : WarManager.getWars().values()) {
@@ -71,19 +89,25 @@ public class WarClaimListener implements Listener {
             Claim attacked = WarManager.getAttackedClaim(w);
             if (attacked == null) continue;
 
-            boolean isConcerned = playerKingdom.equals(w.getAttackerKingdom()) || playerKingdom.equals(w.getDefenderKingdom());
+            boolean isConcerned =
+                    playerKingdom.equals(w.getAttackerKingdom())
+                            || playerKingdom.equals(w.getDefenderKingdom());
             if (!isConcerned) continue;
 
-            boolean wasInside = isInClaim(e.getFrom().getBlockX(), e.getFrom().getBlockZ(), attacked);
-            boolean nowInside = isInClaim(e.getTo().getBlockX(),   e.getTo().getBlockZ(),   attacked);
+            boolean wasInside =
+                    fromGX == attacked.getGridX() && fromGZ == attacked.getGridZ();
+            boolean nowInside =
+                    toGX == attacked.getGridX() && toGZ == attacked.getGridZ();
+
             if (wasInside == nowInside) continue;
 
-            insideAttackedByWar.computeIfAbsent(w.getId(), k -> ConcurrentHashMap.newKeySet());
-            Set<UUID> set = insideAttackedByWar.get(w.getId());
-            // message
-            p.sendMessage(getMessageOnMove(w, !wasInside && nowInside));
+            insideAttackedByWar
+                    .computeIfAbsent(w.getId(), k -> ConcurrentHashMap.newKeySet());
+
+            p.sendMessage(getMessageOnMove(w, nowInside));
         }
     }
+
 
     private static String getMessageOnMove(War war, boolean entering) {
         return ChatUtil.prefixWithWar(entering

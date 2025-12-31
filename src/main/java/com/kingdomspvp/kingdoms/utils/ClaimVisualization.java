@@ -111,7 +111,7 @@ public final class ClaimVisualization {
     // --- Rendu de base ---
 
     public static void drawClaimOutlineForWorld(World world, int gridX, int gridZ, Color color) {
-        int size = ClaimManager.CLAIM_SIZE; // ex: 128
+        int size = ClaimManager.getActiveClaimSize(); // ex: 128
         int minX = gridX * size;
         int minZ = gridZ * size;
         int maxX = minX + size;

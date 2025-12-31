@@ -3,91 +3,162 @@ package com.kingdomspvp.kingdoms.services;
 import com.kingdomspvp.kingdoms.model.Claim;
 import com.kingdomspvp.kingdoms.utils.Callback;
 import com.kingdomspvp.kingdoms.utils.ClaimsJSON;
+import com.kingdomspvp.kingdoms.utils.KingdomsConfig;
+import org.bukkit.Bukkit;
 
+import java.nio.file.Files;
 import java.util.*;
 
 public class ClaimManager {
 
     private static final ClaimsJSON claimsJSON = new ClaimsJSON();
 
+    private static int ACTIVE_CLAIM_SIZE;
+    private static int ACTIVE_MAP_SIZE;
 
-    public static final int MAP_SIZE = 1536;
-    public static final int CLAIM_SIZE = 64;
-    public static final int HALF_MAP = MAP_SIZE / 2;
+    /** Verrou global si claim-size mismatch */
+    private static volatile boolean CLAIMS_LOCKED = false;
 
-    /**
-     * Chargement des claims
-     */
-    public static void loadClaims(Callback<Boolean> success) {
-        claimsJSON.load(success);
+    public static int getActiveClaimSize() {
+        return ACTIVE_CLAIM_SIZE;
     }
 
-    /**
-     * Sauvegarde des claims
-     */
+    public static int getActiveMapSize() {
+        return ACTIVE_MAP_SIZE;
+    }
+
+    /* ===================== */
+    /* ====== LOAD ========= */
+    /* ===================== */
+
+    public static void loadClaims(Callback<Boolean> success) {
+        claimsJSON.load(ok -> {
+
+            Integer metaClaimSize = claimsJSON.getMetaClaimSize();
+            Integer metaMapSize   = claimsJSON.getMetaMapSize();
+
+            if (metaClaimSize == null || metaMapSize == null) {
+                ACTIVE_CLAIM_SIZE = KingdomsConfig.CONFIG_CLAIM_SIZE;
+                ACTIVE_MAP_SIZE   = KingdomsConfig.CONFIG_MAP_SIZE;
+                generateClaims(); // écrit la meta
+            } else {
+                ACTIVE_CLAIM_SIZE = metaClaimSize;
+                ACTIVE_MAP_SIZE   = metaMapSize;
+                KingdomsConfig.warnClaimSizeMismatch(metaClaimSize);
+                KingdomsConfig.warnMapSizeMismatch(metaMapSize);
+            }
+
+            success.onFinish(ok);
+        });
+    }
+
+    /* ===================== */
+    /* ====== LOCK ========= */
+    /* ===================== */
+
+    public static boolean areClaimsLocked() {
+        return CLAIMS_LOCKED;
+    }
+
+    public static void setClaimsLocked(boolean locked) {
+        CLAIMS_LOCKED = locked;
+        if (locked) {
+            Bukkit.getLogger().warning("[Kingdoms] Claims LOCKED.");
+        }
+    }
+
+    /* ===================== */
+    /* ====== SAVE ========= */
+    /* ===================== */
+
     public static void saveClaims() {
         claimsJSON.forceSave();
     }
 
-    /**
-     * Génération des claims sur toute la map si la map est vide
-     */
+    /* ===================== */
+    /* ==== GENERATION ===== */
+    /* ===================== */
+
     public static void generateClaimsIfEmpty() {
         if (!claimsJSON.getAllClaims().isEmpty()) {
-            System.out.println("[Kingdoms] Claims déjà présents, génération ignorée.");
+            Bukkit.getLogger().info("[Kingdoms] Claims déjà présents, génération ignorée.");
             return;
         }
+        generateClaims();
+    }
 
-        int startX = -HALF_MAP;
-        int startZ = -HALF_MAP;
+    public static void generateClaims() {
+        claimsJSON.clearNoSave();
 
-        for (int x = startX; x < startX + MAP_SIZE; x += CLAIM_SIZE) {
-            for (int z = startZ; z < startZ + MAP_SIZE; z += CLAIM_SIZE) {
-                int gridX = (int) Math.floor((double) x / CLAIM_SIZE);
-                int gridZ = (int) Math.floor((double) z / CLAIM_SIZE);
-                Claim claim = new Claim(gridX, gridZ);
-                claimsJSON.addClaim(claim);
+        int halfMap = ACTIVE_MAP_SIZE / 2;
+
+        for (int x = -halfMap; x < halfMap; x += ACTIVE_CLAIM_SIZE) {
+            for (int z = -halfMap; z < halfMap; z += ACTIVE_CLAIM_SIZE) {
+                int gx = (int) Math.floor((double) x / ACTIVE_CLAIM_SIZE);
+                int gz = (int) Math.floor((double) z / ACTIVE_CLAIM_SIZE);
+                claimsJSON.addClaimNoSave(new Claim(gx, gz));
             }
         }
 
-        System.out.println("[Kingdoms] Claims générés : " + claimsJSON.getAllClaims().size());
+        claimsJSON.setMeta(ACTIVE_MAP_SIZE, ACTIVE_CLAIM_SIZE);
     }
 
-    /**
-     * Ajout d'un claim unique
-     */
+    /** Utilisé par /k reload hard */
+    public static void hardRegenerateClaims() {
+        ACTIVE_CLAIM_SIZE = KingdomsConfig.CONFIG_CLAIM_SIZE;
+        ACTIVE_MAP_SIZE   = KingdomsConfig.CONFIG_MAP_SIZE;
+        generateClaims();
+    }
+
+
+    /* ===================== */
+    /* ====== CRUD ========= */
+    /* ===================== */
+
     public static void addClaim(Claim claim) {
+        if (CLAIMS_LOCKED) return;
         claimsJSON.addClaim(claim);
         saveClaims();
     }
 
-    /**
-     * Suppression d'un claim
-     */
     public static void removeClaim(int gridX, int gridZ) {
-        String key = gridX + "," + gridZ;
-        claimsJSON.removeClaim(claimsJSON.getClaim(gridX, gridZ));
-        saveClaims();
+        if (CLAIMS_LOCKED) return;
+        Claim c = claimsJSON.getClaim(gridX, gridZ);
+        if (c != null) {
+            claimsJSON.removeClaim(c);
+            saveClaims();
+        }
     }
 
-    /**
-     * Retourne tous les claims
-     */
-    public static Collection<Claim> getClaims() {
-        return claimsJSON.getAllClaims().values();
-    }
-
-    /**
-     * Trouve un claim spécifique
-     */
     public static Claim getClaim(int gridX, int gridZ) {
         return claimsJSON.getClaim(gridX, gridZ);
     }
 
-    /**
-     * Change le royaume d'un claim
-     */
+    public static Collection<Claim> getClaims() {
+        return claimsJSON.getAllClaims().values();
+    }
+
+    public static Integer getNumClaims() {
+        return claimsJSON.getAllClaims().size();
+    }
+
+    /* ===================== */
+    /* ==== COORDINATES ==== */
+    /* ===================== */
+
+    public static Claim getClaimByCoordinates(int x, int z) {
+        int gx = (int) Math.floor((double) x / ACTIVE_CLAIM_SIZE);
+        int gz = (int) Math.floor((double) z / ACTIVE_CLAIM_SIZE);
+        return getClaim(gx, gz);
+    }
+
+
+    /* ===================== */
+    /* ====== KINGDOM ====== */
+    /* ===================== */
+
     public static void setKingdomForClaim(int gridX, int gridZ, String kingdomName) {
+        if (CLAIMS_LOCKED) return;
         Claim claim = getClaim(gridX, gridZ);
         if (claim != null) {
             claim.setKingdomName(kingdomName);
@@ -95,86 +166,12 @@ public class ClaimManager {
         }
     }
 
-    public static Claim getClaimByCoordinates(int x, int z) {
-        int gridX = (int) Math.floor((double) x / CLAIM_SIZE);
-        int gridZ = (int) Math.floor((double) z / CLAIM_SIZE);
-        return getClaim(gridX, gridZ);
-    }
-
-    public static Integer getNumClaims() {
-        return claimsJSON.getAllClaims().size();
-    }
-
-    public static void generateClaims() {
-        claimsJSON.clear();
-
-        int startX = -HALF_MAP;
-        int startZ = -HALF_MAP;
-
-        for (int x = startX; x < startX + MAP_SIZE; x += CLAIM_SIZE) {
-            for (int z = startZ; z < startZ + MAP_SIZE; z += CLAIM_SIZE) {
-                int gridX = (int) Math.floor((double) x / CLAIM_SIZE);
-                int gridZ = (int) Math.floor((double) z / CLAIM_SIZE);
-                Claim claim = new Claim(gridX, gridZ);
-                claimsJSON.addClaim(claim);
-            }
-        }
-    }
-
-    public static boolean isAdjacentToKingdomClaim(Claim claim, String kingdomName) {
-        int x = claim.getGridX();
-        int z = claim.getGridZ();
-
-        int[][] directions = {
-                {1, 0}, {-1, 0}, {0, 1}, {0, -1}
-        };
-
-        for (int[] dir : directions) {
-            Claim neighbor = ClaimManager.getClaim(x + dir[0], z + dir[1]);
-            if (neighbor != null && kingdomName.equalsIgnoreCase(neighbor.getKingdomName())) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     public static boolean hasClaimForKingdom(String kingdomName) {
         for (Claim c : getClaims()) {
-            if (kingdomName.equalsIgnoreCase(c.getKingdomName())) {
-                return true;
-            }
+            if (kingdomName.equalsIgnoreCase(c.getKingdomName())) return true;
         }
         return false;
     }
-
-    public static boolean isCornerClaim(Claim claim) {
-        int gridX = claim.getGridX();
-        int gridZ = claim.getGridZ();
-
-        int half = ClaimManager.HALF_MAP / ClaimManager.CLAIM_SIZE;
-        int min = -half;
-        int max = half - 1;
-
-        return (gridX == min && gridZ == min) ||
-               (gridX == min && gridZ == max) ||
-               (gridX == max && gridZ == min) ||
-               (gridX == max && gridZ == max);
-    }
-
-    // services/ClaimManager.java
-    public static List<Claim> getDefenderClaimsAdjacentToAttacker(String defenderKingdom, String attackerKingdom) {
-        List<Claim> result = new ArrayList<>();
-        for (Claim c : getClaims()) {
-            if (defenderKingdom.equalsIgnoreCase(c.getKingdomName())) {
-                if (isAdjacentToKingdomClaim(c, attackerKingdom)) {
-                    result.add(c);
-                }
-            }
-        }
-        return result;
-    }
-
 
     public static List<Claim> getClaimsByKingdomName(String name) {
         List<Claim> result = new ArrayList<>();
@@ -187,19 +184,73 @@ public class ClaimManager {
     }
 
     public static void transferClaimToKingdom(Claim claim, String kingdomName, String factionTag) {
-        if (claim == null || kingdomName == null) return;
+        if (CLAIMS_LOCKED || claim == null || kingdomName == null) return;
         claim.setKingdomName(kingdomName);
         if (factionTag != null && !factionTag.isEmpty()) {
             claim.setFactionName(factionTag);
         }
-        addClaim(claim); // addClaim() force la sauvegarde
+        addClaim(claim);
     }
 
-    /**
-     * Surcharge pratique si tu veux juste passer le royaume (faction tag auto: "Paysans_<royaume>")
-     */
     public static void transferClaimToKingdom(Claim claim, String kingdomName) {
-        String defaultFactionTag = "Paysans_" + kingdomName;
-        transferClaimToKingdom(claim, kingdomName, defaultFactionTag);
+        transferClaimToKingdom(claim, kingdomName, "Paysans_" + kingdomName);
+    }
+
+    /* ===================== */
+    /* ===== ADJACENCY ===== */
+    /* ===================== */
+
+    public static boolean isAdjacentToKingdomClaim(Claim claim, String kingdomName) {
+        int x = claim.getGridX();
+        int z = claim.getGridZ();
+
+        int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
+        for (int[] d : dirs) {
+            Claim n = getClaim(x + d[0], z + d[1]);
+            if (n != null && kingdomName.equalsIgnoreCase(n.getKingdomName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static List<Claim> getDefenderClaimsAdjacentToAttacker(String defender, String attacker) {
+        List<Claim> result = new ArrayList<>();
+        for (Claim c : getClaims()) {
+            if (defender.equalsIgnoreCase(c.getKingdomName())
+                    && isAdjacentToKingdomClaim(c, attacker)) {
+                result.add(c);
+            }
+        }
+        return result;
+    }
+
+    /* ===================== */
+    /* ====== CORNERS ====== */
+    /* ===================== */
+
+    public static boolean isCornerClaim(Claim claim) {
+        int mapSize = ACTIVE_MAP_SIZE;
+        int claimSize = ACTIVE_CLAIM_SIZE;
+
+        int half = (mapSize / 2) / claimSize;
+        int min = -half;
+        int max = half - 1;
+
+        int x = claim.getGridX();
+        int z = claim.getGridZ();
+
+        return (x == min && z == min)
+                || (x == min && z == max)
+                || (x == max && z == min)
+                || (x == max && z == max);
+    }
+
+    /* ===================== */
+    /* ====== META ========= */
+    /* ===================== */
+
+    public static Integer getStoredClaimSize() {
+        return claimsJSON.getMetaClaimSize();
     }
 }
