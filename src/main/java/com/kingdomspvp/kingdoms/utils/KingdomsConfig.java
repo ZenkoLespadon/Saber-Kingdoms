@@ -167,109 +167,192 @@ public final class KingdomsConfig {
         }
 
         File file = new File(folder, "config_kingdoms.yml");
+        String content = """
+                  # =========================
+                  # Kingdoms - Configuration
+                  # =========================
+                  # Ce fichier contrôle l’ensemble du système de royaumes, claims et guerres.
+                  # Toute modification est prise en compte après /k reload ou un redémarrage du serveur.
+                  # Certaines valeurs nécessitent /k reload hard (voir sections concernées).
+             
+             
+             
+                  # -------------------------
+                  # CLAIMS
+                  # Définit la taille de la map et des claims.
+                  #
+                  # IMPORTANT :
+                  # - Modifier ces valeurs nécessite /k reload hard
+                  # - Cette action SUPPRIME et RÉGÉNÈRE tous les claims existants
+                  # -------------------------
+                  claims:
+                    # Taille totale de la map carrée (en blocs).
+                    # Exemple : 1536 = map de -768 à +768 sur X et Z.
+                    map-size: 1536
+        
+                    # Taille d’un claim (en blocs).
+                    # Exemple : 64 = chaque claim fait 64x64 blocs.
+                    claim-size: 64
+        
+        
+                  # -------------------------
+                  # VISUALISATION DES CLAIMS
+                  # Paramètres utilisés pour afficher les claims avec des particules.
+                  # Affecte les performances serveur.
+                  # -------------------------
+                  visualization:
+                    particles:
+                      # Taille des particules.
+                      dust-size: 5.0
+        
+                      # Espace entre chaque particule autour d’un claim.
+                      step: 4
+        
+                      # Nombre de particules générées par point (Laisser à 1 sauf besoin spécifique).
+                      count-per-spawn: 1
+        
+                      # Fréquence de rafraîchissement des particules en ticks (20 ticks = 1 seconde).
+                      period-ticks: 10
+        
+                      # Nombre maximal de particules générées par tick (protège contre les surcharges).
+                      max-spawns-per-tick: 5000
+        
+                      # Distance maximale à laquelle un joueur peut voir les particules.
+                      max-distance-blocks: 256
+        
+        
+                  # -------------------------
+                  # COMMANDES
+                  # Paramètres des commandes administrateur.
+                  # -------------------------
+                  commands:
+                    vizclaims:
+                      # Durée par défaut (en secondes) de la commande /k vizclaims
+                      default-seconds: 30
+        
+                      # Durée minimale autorisée
+                      min-seconds: 1
+        
+                      # Durée maximale autorisée
+                      max-seconds: 300
+        
+                      # Fréquence de rafraîchissement des particules pour cette commande
+                      period-ticks: 10
+        
+        
+                  # -------------------------
+                  # GUERRES
+                  # Paramètres globaux du système de guerres entre royaumes.
+                  # -------------------------
+                  war:
+                    # Utile pour le développement ou les tests (délais plus courts)
+                    test-mode: true
+        
+                    # ---------------------
+                    # PLANIFICATION
+                    # Phase entre la déclaration et le début potentiel de la guerre.
+                    # ---------------------
+                    planning:
+                      # Temps minimum avant le début de la guerre
+                      min-time-before-war-minutes: 1
+        
+                      # Temps maximum avant le début de la guerre
+                      max-time-before-war-hours: 48
+        
+                      # Délai avant l’envoi du message demandant aux joueurs de rejoindre la guerre.
+                      join-prompt-lead-seconds: 30
+        
+                    # ---------------------
+                    # DÉTECTION
+                    # Fenêtre pendant laquelle les attaquants doivent entrer dans un claim pour déclencher la manche.
+                    # ---------------------
+                    detection:
+                      window-seconds: 120
+        
+                    # ---------------------
+                    # COMBAT
+                    # Paramètres du déroulement des rounds de guerre.
+                    # Gagner une manche permet de capturer un claim.
+                    # Pour gagner une manche, les attaquants doivent atteindre target-points avant la fin de la manche
+                    # Et les défenseurs doivent les en empêcher pendant 1 manche pour arrêter la guerre.
+                    # Au fil des manches, il devient de plus en plus difficile pour les attaquants de gagner une manche.
+                    # ---------------------
+                    combat:
+                      # Durée maximale d’une manche
+                      duration-seconds: 150
+        
+                      # Nombre maximum de rounds dans une guerre
+                      max-rounds: 4
+        
+                      # Facteur de progression par round.
+                      # Plus bas = manche plus dure pour les attaquants.
+                      round-gain-factor: 0.87
+        
+                      # Nombre de points nécessaires pour capturer un claim
+                      target-points: 1000
+        
+                      # Pourcentage de temps où un ratio 1:1 attaquants/défenseurs donne target-points en target-fraction du temps.
+                      # Exemple : target-fraction = 0.80, target-points = 1000, duraction-seconds = 150
+                      # Les attaquants (avec un ratio 1:1) atteignent 1000 points en 120 secondes (80% de 150s).
+                      target-fraction: 0.80
+        
+                      # Bornes de sécurité pour les ratios attaquants/défenseurs.
+                      # Évite les gains énormes en cas de déséquilibre.
+                      ratio:
+                        min: 0.5
+                        max: 2.0
+        
+                    # ---------------------
+                    # TÉLÉPORTATION
+                    # Paramètres des téléportations pendant les guerres.
+                    # ---------------------
+                    teleport:
+                      # Distance de la bordure du claim lors d'une téléportation.
+                      offset-from-border: 10
+        
+                      # Distance du sol lors d'une téléportation.
+                      y-offset: 1
+        
+                    # ---------------------
+                    # KDA
+                    # Gestion des statistiques de kills, deaths et assists.
+                    # ---------------------
+                    kda:
+                      # Fenêtre pendant laquelle un joueur est compté comme assistant après avoir infligé des dégâts.
+                      assist-window-seconds: 10
+        
+                      # Comptabiliser les dégâts auto-infligés dans le KDA.
+                      # Si true :
+                      # - Les joueurs qui meurent sans se faire tapper sont comptés dans le KDA
+                      # Si false :
+                      # - Ils sont ignorés du le calcul du KDA.
+                      count-self-damage: true
+        
+        
+                  # -------------------------
+                  # BLOCS PENDANT LES GUERRES
+                  # -------------------------
+                  blocks:
+                    # Temps avant restauration automatique des blocs modifiés
+                    revert-after-seconds: 20
+        
+                    # Liste des blocs interdits à placer pendant une guerre
+                    forbidden:
+                      - TNT
+                      - FIRE
+        
+        
+                  # -------------------------
+                  # MORT EN GUERRE
+                  # Comportement après la mort d’un joueur pendant un combat.
+                  # -------------------------
+                  death:
+                    # Délai avant l’envoi du message proposant une téléportation vers la guerre en cours.
+                    tp-message-delay-seconds: 15
+                  """;
         if (file.exists()) return;
 
         try {
-            String content = """
-# =========================
-# Kingdoms - Configuration
-# =========================
-
-# -------------------------
-# CLAIMS
-# Taille globale de la map et des claims.
-# ⚠️ Modifier claim-size nécessite /k reload hard
-# -------------------------
-claims:
-  map-size: 1536
-  claim-size: 64
-
-
-# -------------------------
-# VISUALISATION DES CLAIMS
-# Particules utilisées pour afficher les claims.
-# Attention : des valeurs trop élevées peuvent provoquer du lag.
-# -------------------------
-visualization:
-  particles:
-    dust-size: 5.0
-    step: 4
-    count-per-spawn: 1
-    period-ticks: 10
-    max-spawns-per-tick: 5000
-    max-distance-blocks: 256
-
-
-# -------------------------
-# COMMANDES
-# Paramètres des commandes administrateur.
-# -------------------------
-commands:
-  vizclaims:
-    default-seconds: 30
-    min-seconds: 1
-    max-seconds: 300
-    period-ticks: 10
-
-
-# -------------------------
-# GUERRES
-# Paramètres globaux du système de guerre.
-# -------------------------
-war:
-  # Active le mode test (délais raccourcis, règles assouplies)
-  test-mode: true
-
-  # Phase de planification avant la guerre
-  planning:
-    min-time-before-war-minutes: 1
-    max-time-before-war-hours: 48
-    join-prompt-lead-seconds: 30
-
-  # Fenêtre de détection du premier assaut
-  detection:
-    window-seconds: 120
-
-  # Déroulement du combat
-  combat:
-    duration-seconds: 150
-    max-rounds: 4
-    round-gain-factor: 0.87
-    target-points: 1000
-    target-fraction: 0.80
-    ratio:
-      min: 0.5
-      max: 2.0
-
-  # Téléportation pendant la guerre
-  teleport:
-    offset-from-border: 10
-    y-offset: 1
-
-  # Statistiques KDA
-  kda:
-    assist-window-seconds: 10
-    count-self-damage: true
-
-
-# -------------------------
-# BLOCS EN ZONE DE GUERRE
-# Restauration automatique des blocs modifiés.
-# -------------------------
-blocks:
-  revert-after-seconds: 20
-  forbidden:
-    - TNT
-    - FIRE
-
-
-# -------------------------
-# MORT EN GUERRE
-# Délai avant proposition de téléportation.
-# -------------------------
-death:
-  tp-message-delay-seconds: 15
-""";
 
             Files.writeString(file.toPath(), content);
             plugin.getLogger().info("[SaberKingdoms] config_kingdoms.yml généré par défaut.");
