@@ -253,4 +253,8 @@ public class ClaimManager {
     public static Integer getStoredClaimSize() {
         return claimsJSON.getMetaClaimSize();
     }
+
+    public static Integer getStoredMapSize() {
+        return claimsJSON.getMetaMapSize();
+    }
 }
