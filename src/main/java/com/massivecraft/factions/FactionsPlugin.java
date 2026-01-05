@@ -11,7 +11,9 @@ import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
 import com.kingdomspvp.kingdoms.utils.KingdomsConfig;
+import com.kingdomspvp.kingdoms.utils.KingdomsConfigLoader;
 import com.kingdomspvp.kingdoms.utils.LocalDateTimeAdapter;
+import com.kingdomspvp.kingdoms.utils.SettingsProvider;
 import com.massivecraft.factions.addon.AddonManager;
 import com.massivecraft.factions.addon.FactionsAddon;
 import com.massivecraft.factions.cmd.CmdAutoHelp;
@@ -314,6 +316,10 @@ public class FactionsPlugin extends MPlugin {
             return;
         }
 
+        SettingsProvider.set(
+                KingdomsConfigLoader.load(this)
+        );
+
         KingdomsManager.loadKingdoms(success -> {
             if (Boolean.TRUE.equals(success)) {
                 getLogger().info("Kingdoms loaded");
@@ -340,6 +346,7 @@ public class FactionsPlugin extends MPlugin {
 
         getLogger().info("Nombre de claims : " + ClaimManager.getNumClaims());
     }
+
 
 
 
