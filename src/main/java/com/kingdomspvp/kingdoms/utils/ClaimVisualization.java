@@ -23,12 +23,6 @@ public final class ClaimVisualization {
     public static void init(Plugin plugin) { PLUGIN = plugin; }
     private static Plugin getPlugin() { return PLUGIN; }
 
-    // --- Réglages visuels/perf ---
-    private static final float  DUST_SIZE          = 5.0f;
-    private static final int    STEP               = 4;
-    private static final long   PERIOD_TICKS       = 10L;
-    private static final int    COUNT_PER_SPAWN    = 1;
-
     // Budget anti-lag
     private static final int MAX_SPAWNS_PER_TICK = 5000;
     private static int spawnsThisTick = 0;
@@ -72,7 +66,7 @@ public final class ClaimVisualization {
                         renderAttackableClaimsOnceForWorld(w, war);
                     }
                 },
-                0L, PERIOD_TICKS
+                0L, periodTicks()
         );
         WAR_TASKS.put(war.getId(), taskId);
     }
@@ -98,7 +92,7 @@ public final class ClaimVisualization {
                         drawClaimOutlineForWorld(w, gx, gz, color);
                     }
                 },
-                0L, PERIOD_TICKS
+                0L, periodTicks()
         );
         WAR_TASKS.put(war.getId(), taskId);
     }
@@ -120,14 +114,14 @@ public final class ClaimVisualization {
         // Filtrage grossier par proximité joueur (évite de travailler loin)
         if (!claimNearAnyPlayer(world, minX, minZ, maxX, maxZ)) return;
 
-        Particle.DustOptions dust = new Particle.DustOptions(color, DUST_SIZE);
+        Particle.DustOptions dust = new Particle.DustOptions(color, dustSize());
 
-        for (int x = minX; x <= maxX; x += STEP) {
+        for (int x = minX; x <= maxX; x += step()) {
             spawnAtGroundPlus2(world, x, minZ, dust);
             spawnAtGroundPlus2(world, x, maxZ, dust);
             if (overBudget()) return;
         }
-        for (int z = minZ; z <= maxZ; z += STEP) {
+        for (int z = minZ; z <= maxZ; z += step()) {
             spawnAtGroundPlus2(world, minX, z, dust);
             spawnAtGroundPlus2(world, maxX, z, dust);
             if (overBudget()) return;
@@ -156,7 +150,7 @@ public final class ClaimVisualization {
         if (overBudget()) return;
         int groundY = w.getHighestBlockYAt(x, z);
         Location loc = new Location(w, x + 0.5, groundY + 2.0, z + 0.5);
-        w.spawnParticle(Particle.DUST, loc, COUNT_PER_SPAWN, 0, 0, 0, 0, dust, true);
+        w.spawnParticle(Particle.DUST, loc, countPerSpawn(), 0, 0, 0, 0, dust, true);
         spawnsThisTick++;
     }
 
@@ -209,5 +203,21 @@ public final class ClaimVisualization {
             case BLACK:       return Color.fromRGB(0, 0, 0);
             default:          return Color.fromRGB(255, 255, 255);
         }
+    }
+
+    private static float dustSize() {
+        return SettingsProvider.get().visualization().particles().dustSize();
+    }
+
+    private static int step() {
+        return SettingsProvider.get().visualization().particles().step();
+    }
+
+    private static long periodTicks() {
+        return SettingsProvider.get().visualization().particles().periodTicks();
+    }
+
+    private static int countPerSpawn() {
+        return SettingsProvider.get().visualization().particles().countPerSpawn();
     }
 }

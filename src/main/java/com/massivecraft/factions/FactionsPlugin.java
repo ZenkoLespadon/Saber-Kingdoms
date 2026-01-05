@@ -149,7 +149,9 @@ public class FactionsPlugin extends MPlugin {
             return;
         }
 
-        this.version = Short.parseShort(ReflectionUtils.PackageType.getServerVersion().split("_")[1]);
+        this.version = Short.parseShort(
+                ReflectionUtils.PackageType.getServerVersion().split("_")[1]
+        );
 
         if (!preEnable()) {
             this.loadSuccessful = false;
@@ -160,45 +162,59 @@ public class FactionsPlugin extends MPlugin {
         Conf.load();
 
         StartupParameter.initData(this, () -> {
+
             if (getConfig().getBoolean("enable-faction-flight", true)) {
-                Bukkit.getServer().getScheduler().runTaskTimer(FactionsPlugin.getInstance(), new FlightEnhance(), 30L, 30L);
+                Bukkit.getServer().getScheduler().runTaskTimer(
+                        FactionsPlugin.getInstance(),
+                        new FlightEnhance(),
+                        30L, 30L
+                );
             }
 
             VersionProtocol.printVerionInfo();
-            // Add Base Commands
+
             this.cmdBase = new FCmdRoot();
             this.cmdAutoHelp = new CmdAutoHelp();
 
             setupPermissions();
 
             if (Conf.worldGuardChecking || Conf.worldGuardBuildPriority) {
-                Plugin plugin = Bukkit.getPluginManager().getPlugin("WorldGuard");
-                if (plugin != null) {
+                Plugin wg = Bukkit.getPluginManager().getPlugin("WorldGuard");
+                if (wg != null) {
                     new WorldGuardBridge().connect(this, true);
                 }
             }
 
-            // start up task which runs the autoLeaveAfterDaysOfInactivity routine
             startAutoLeaveTask(false);
 
             Bukkit.getPluginManager().registerEvents(new SaberGUIListener(), this);
-            Bukkit.getPluginManager().registerEvents(factionsPlayerListener = new FactionsPlayerListener(), this);
+            Bukkit.getPluginManager().registerEvents(
+                    factionsPlayerListener = new FactionsPlayerListener(), this
+            );
 
             if (Conf.userSpawnerChunkSystem) {
-                Bukkit.getPluginManager().registerEvents(new SpawnerChunkListener(), this);
+                Bukkit.getPluginManager().registerEvents(
+                        new SpawnerChunkListener(), this
+                );
             }
 
-            if (FactionsPlugin.getInstance().getConfig().getBoolean("disable-chorus-teleport-in-territory") && this.version > 8) {
-                Bukkit.getPluginManager().registerEvents(new ChorusFruitListener(), this);
+            if (FactionsPlugin.getInstance().getConfig()
+                    .getBoolean("disable-chorus-teleport-in-territory")
+                    && this.version > 8) {
+                Bukkit.getPluginManager().registerEvents(
+                        new ChorusFruitListener(), this
+                );
             }
 
             FactionDataHelper.init();
 
             if (version > 8) {
-                Bukkit.getPluginManager().registerEvents(new MissionHandlerModern(), this);
+                Bukkit.getPluginManager().registerEvents(
+                        new MissionHandlerModern(), this
+                );
             }
 
-            for (Listener eventListener : new Listener[]{
+            for (Listener listener : new Listener[]{
                     new TributeInventoryHandler(),
                     new FactionsEntityListener(),
                     new FactionsExploitListener(),
@@ -208,11 +224,14 @@ public class FactionsPlugin extends MPlugin {
                     new FChestListener(),
                     new MenuListener(),
                     new AntiChestListener()
-            })
-                Bukkit.getPluginManager().registerEvents(eventListener, this);
+            }) {
+                Bukkit.getPluginManager().registerEvents(listener, this);
+            }
 
             if (Conf.useGraceSystem) {
-                Bukkit.getPluginManager().registerEvents(timerManager.graceTimer, this);
+                Bukkit.getPluginManager().registerEvents(
+                        timerManager.graceTimer, this
+                );
             }
 
             new AsyncPlayerMap(this);
@@ -222,83 +241,107 @@ public class FactionsPlugin extends MPlugin {
             AddonManager.getAddonManagerInstance().loadAddons();
 
             Bukkit.getScheduler().runTaskLater(this, () -> {
-                //To Add Addon Commands Into "Tab Completion Format"
-                if (factionsAddonHashMap.size() > 0) {
+                if (!factionsAddonHashMap.isEmpty()) {
                     FCmdRoot.instance.addVariableCommands();
                     FCmdRoot.instance.rebuild();
                 }
-            }, 100);
+            }, 100L);
 
             this.getCommand(refCommand).setExecutor(cmdBase);
-            if (!CommodoreProvider.isSupported()) this.getCommand(refCommand).setTabCompleter(this);
-
+            if (!CommodoreProvider.isSupported()) {
+                this.getCommand(refCommand).setTabCompleter(this);
+            }
 
             this.postEnable();
             this.loadSuccessful = true;
-            // Set startup finished to true. to give plugins hooking in a greenlight
             FactionsPlugin.startupFinished = true;
         });
 
+        // =========================
+        // KINGDOMS (SYNC AFTER BOOT)
+        // =========================
         Bukkit.getScheduler().runTask(this, () -> {
+
             try {
-                for (Player p : org.bukkit.Bukkit.getOnlinePlayers()) {
+                for (Player p : Bukkit.getOnlinePlayers()) {
                     WarManager.clearSidebarFor(p);
                 }
 
-                KingdomsConfig.ensureDefaultConfig(this);
-
-                if (!KingdomsConfig.load(this)) {
-                    getLogger().severe("Erreur de chargement de la configuration.");
-                    getServer().getPluginManager().disablePlugin(this);
-                    return;
-                }
-
-                KingdomsManager.loadKingdoms(success -> {
-                    if (Boolean.TRUE.equals(success)) {
-                        getLogger().info("Kingdoms loaded");
-                    }
-                });
-
-                ClaimManager.loadClaims(success -> {
-                    if (Boolean.TRUE.equals(success)) {
-                        if (ClaimManager.getNumClaims() == 0) {
-                            ClaimManager.generateClaims();
-                            ClaimManager.saveClaims();
-                            getLogger().info("Claims generated and saved because empty");
-                        } else {
-                            getLogger().info("Claims loaded from disk");
-                        }
-                    }
-                });
-
-                WarManager.loadWars(success -> {
-                    if (success) {
-                        getLogger().info("Wars loaded");
-                    }
-                });
-
-
-                getLogger().info("nombre de claims : " + ClaimManager.getNumClaims());
+                initKingdomsSoft();
 
             } catch (Exception e) {
                 e.printStackTrace();
             }
 
-            Bukkit.getPluginManager().registerEvents(new KingdomProtectionListener(), this);
-            Bukkit.getPluginManager().registerEvents(new WarDeclareWizard(), this);
-            Bukkit.getPluginManager().registerEvents(new WarJoinAnnounceListener(), this);
-            Bukkit.getPluginManager().registerEvents(new WarUIReconnectListener(), this);
-            getServer().getPluginManager().registerEvents(new TablistKingdomColors(this, 1200L), this);
-            getServer().getPluginManager().registerEvents(new AutoClaimListener(), this);
-            getServer().getPluginManager().registerEvents(new KingdomChatFormatListener(), this);
+            Bukkit.getPluginManager().registerEvents(
+                    new KingdomProtectionListener(), this
+            );
+            Bukkit.getPluginManager().registerEvents(
+                    new WarDeclareWizard(), this
+            );
+            Bukkit.getPluginManager().registerEvents(
+                    new WarJoinAnnounceListener(), this
+            );
+            Bukkit.getPluginManager().registerEvents(
+                    new WarUIReconnectListener(), this
+            );
+            Bukkit.getPluginManager().registerEvents(
+                    new TablistKingdomColors(this, 1200L), this
+            );
+            Bukkit.getPluginManager().registerEvents(
+                    new AutoClaimListener(), this
+            );
+            Bukkit.getPluginManager().registerEvents(
+                    new KingdomChatFormatListener(), this
+            );
 
             TablistKingdomColors.refreshAll();
 
-            KingdomCommandExecutor exec = new KingdomCommandExecutor(FactionsPlugin.getInstance());
+            KingdomCommandExecutor exec =
+                    new KingdomCommandExecutor(FactionsPlugin.getInstance());
             this.getCommand("k").setExecutor(exec);
             this.getCommand("k").setTabCompleter(exec);
         });
     }
+
+    private void initKingdomsSoft() {
+
+        KingdomsConfig.ensureDefaultConfig(this);
+
+        if (!KingdomsConfig.load(this)) {
+            getLogger().severe("Erreur de chargement de la configuration Kingdoms.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
+        KingdomsManager.loadKingdoms(success -> {
+            if (Boolean.TRUE.equals(success)) {
+                getLogger().info("Kingdoms loaded");
+            }
+        });
+
+        ClaimManager.loadClaims(success -> {
+            if (Boolean.TRUE.equals(success)) {
+                if (ClaimManager.getNumClaims() == 0) {
+                    ClaimManager.generateClaims();
+                    ClaimManager.saveClaims();
+                    getLogger().info("Claims generated and saved because empty");
+                } else {
+                    getLogger().info("Claims loaded from disk");
+                }
+            }
+        });
+
+        WarManager.loadWars(success -> {
+            if (success) {
+                getLogger().info("Wars loaded");
+            }
+        });
+
+        getLogger().info("Nombre de claims : " + ClaimManager.getNumClaims());
+    }
+
+
 
     private void setupPlaceholderAPI() {
         Plugin clip = Bukkit.getPluginManager().getPlugin("PlaceholderAPI");

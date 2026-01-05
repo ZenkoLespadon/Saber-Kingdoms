@@ -257,4 +257,15 @@ public class ClaimManager {
     public static Integer getStoredMapSize() {
         return claimsJSON.getMetaMapSize();
     }
+
+    public static void hardRegenerateClaims(int mapSize, int claimSize) {
+
+        // runtime = config (intention admin assumée)
+        ACTIVE_MAP_SIZE = mapSize;
+        ACTIVE_CLAIM_SIZE = claimSize;
+
+        claimsJSON.clearNoSave();
+        generateClaims(); // écrit claims + meta
+    }
+
 }
