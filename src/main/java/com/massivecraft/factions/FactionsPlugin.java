@@ -345,6 +345,8 @@ public class FactionsPlugin extends MPlugin {
         });
 
         getLogger().info("Nombre de claims : " + ClaimManager.getNumClaims());
+
+        WarManager.applyWarTimingsFromSettings();
     }
 
 

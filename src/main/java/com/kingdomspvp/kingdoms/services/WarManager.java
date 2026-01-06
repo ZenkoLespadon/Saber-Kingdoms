@@ -46,25 +46,21 @@ import static com.kingdomspvp.kingdoms.services.WarRuntime.stopAll;
 public class WarManager {
 
 /*
-!!!!!! Mettre [WAR] devant tous les messages liées aux guerres pour éviter les confusions
-!!!! mettre la couleur dans le tab et au dessus de leur tete (pseudo)
-!!!! et au dessus de la tête des joueurs
 !! faire un pnj qui ouvre une interface pour rejoindre un royaume
-!! commande pour changer les joueurs de royaume
 
 mettre la pomme cheat 1.20
 
 c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules (vérifier si c'est tous les packs ou juste le sien)
  */
 
-    public static Duration MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
-    public static Duration MAX_TIME_BEFORE_WAR = Duration.ofHours(48);
+    public static Duration MIN_TIME_BEFORE_WAR;
+    public static Duration MAX_TIME_BEFORE_WAR;
 
     /** Délai avant le début pour afficher le bouton d'inscription. */
-    public static Duration JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(30); // ex. passez à 5 min en beta
+    public static Duration JOIN_PROMPT_LEAD_TIME; // ex. passez à 5 min en beta
 
     /** Taille de claim (en blocs), reprise du ClaimManager. */
-    public static final int CLAIM_SIZE = ClaimManager.getActiveClaimSize();
+    public static int claimSize = ClaimManager.getActiveClaimSize();
 
     private static final WarsJSON warsJSON = new WarsJSON();
 
@@ -86,11 +82,11 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
     private static boolean blockEditListenerRegistered = false;
 
     /** Fenêtre max de détection avant auto-arrêt. */
-    public static final Duration DETECTION_WINDOW = Duration.ofMinutes(2);
+    public static Duration DETECTION_WINDOW;
     /** Tâches de time-out par guerre. */
     private static final Map<String, Integer> detectionTimeoutTasks = new java.util.concurrent.ConcurrentHashMap<>();
 
-    private static boolean TEST_MODE = true;
+    private static boolean TEST_MODE;
     public static boolean isTestMode() { return TEST_MODE; }
 
     public static void loadWars(Callback<Boolean> success) {
@@ -673,14 +669,14 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         Integer gx = w.getAttackedGridX();
         Integer gz = w.getAttackedGridZ();
         if (gx == null || gz == null) return null;
-        int centerX = gx * CLAIM_SIZE + CLAIM_SIZE / 2;
-        int centerZ = gz * CLAIM_SIZE + CLAIM_SIZE / 2;
+        int centerX = gx * claimSize + claimSize / 2;
+        int centerZ = gz * claimSize + claimSize / 2;
         return ClaimManager.getClaimByCoordinates(centerX, centerZ);
     }
 
     public static Location getClaimCenter(Claim c) {
-        int cx = c.getGridX() * CLAIM_SIZE + CLAIM_SIZE / 2; // CLAIM_SIZE = 64
-        int cz = c.getGridZ() * CLAIM_SIZE + CLAIM_SIZE / 2;
+        int cx = c.getGridX() * claimSize + claimSize / 2; // CLAIM_SIZE = 64
+        int cz = c.getGridZ() * claimSize + claimSize / 2;
         int y = world.getHighestBlockYAt(cx, cz);
         return new Location(world, cx + 0.5, y + 1, cz + 0.5);
     }
@@ -694,8 +690,8 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         int[][] dirs = {{1,0}, {-1,0}, {0,1}, {0,-1}};
         for (int[] d : dirs) {
             int ngx = gx + d[0], ngz = gz + d[1];
-            int blockX = ngx * CLAIM_SIZE + CLAIM_SIZE / 2;
-            int blockZ = ngz * CLAIM_SIZE + CLAIM_SIZE / 2;
+            int blockX = ngx * claimSize + claimSize / 2;
+            int blockZ = ngz * claimSize + claimSize / 2;
             Claim neighbor = ClaimManager.getClaimByCoordinates(blockX, blockZ);
             if (neighbor != null && attackerKingdomName.equalsIgnoreCase(neighbor.getKingdomName())) {
                 return neighbor;
@@ -713,26 +709,26 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
 
         if (sx == ax && sz == az + 1) {
             // staging au S du attacked → bord nord de staging
-            int x = sx * CLAIM_SIZE + CLAIM_SIZE / 2;
-            int z = sz * CLAIM_SIZE + offset;
+            int x = sx * claimSize + claimSize / 2;
+            int z = sz * claimSize + offset;
             int y = world.getHighestBlockYAt(x, z);
             return new Location(world, x + 0.5, y + 1, z + 0.5);
         } else if (sx == ax && sz == az - 1) {
             // staging au N du attacked → bord sud de staging
-            int x = sx * CLAIM_SIZE + CLAIM_SIZE / 2;
-            int z = (sz + 1) * CLAIM_SIZE - 1 - offset;
+            int x = sx * claimSize + claimSize / 2;
+            int z = (sz + 1) * claimSize - 1 - offset;
             int y = world.getHighestBlockYAt(x, z);
             return new Location(world, x + 0.5, y + 1, z + 0.5);
         } else if (sz == az && sx == ax + 1) {
             // staging à l'E du attacked → bord ouest de staging
-            int x = sx * CLAIM_SIZE + offset;
-            int z = sz * CLAIM_SIZE + CLAIM_SIZE / 2;
+            int x = sx * claimSize + offset;
+            int z = sz * claimSize + claimSize / 2;
             int y = world.getHighestBlockYAt(x, z);
             return new Location(world, x + 0.5, y + 1, z + 0.5);
         } else if (sz == az && sx == ax - 1) {
             // staging à l'O du attacked → bord est de staging
-            int x = (sx + 1) * CLAIM_SIZE - 1 - offset;
-            int z = sz * CLAIM_SIZE + CLAIM_SIZE / 2;
+            int x = (sx + 1) * claimSize - 1 - offset;
+            int z = sz * claimSize + claimSize / 2;
             int y = world.getHighestBlockYAt(x, z);
             return new Location(world, x + 0.5, y + 1, z + 0.5);
         }
@@ -831,17 +827,55 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
 
     public static void enableTestMode() {
         TEST_MODE = true;
-        MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
-        MAX_TIME_BEFORE_WAR = Duration.ofMinutes(20);
-        JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(30);
-        Bukkit.getLogger().info("[WarManager] TEST MODE ON: window 1–20 min, join prompt 30s.");
+        applyWarTimingsFromSettings();
     }
 
     public static void disableTestMode() {
         TEST_MODE = false;
-        MIN_TIME_BEFORE_WAR = Duration.ofHours(1);
-        MAX_TIME_BEFORE_WAR = Duration.ofHours(24);
-        JOIN_PROMPT_LEAD_TIME = Duration.ofMinutes(5);
-        Bukkit.getLogger().info("[WarManager] TEST MODE OFF: window 1–24 h, join prompt 5m.");
+        applyWarTimingsFromSettings();
     }
+
+
+    public static void applyWarTimingsFromSettings() {
+
+        var warCfg = SettingsProvider.get().war();
+        var planning = warCfg.planning();
+
+        TEST_MODE = warCfg.testMode();
+
+        if (TEST_MODE) {
+            // 🔬 MODE TEST — valeurs forcées
+            MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
+            MAX_TIME_BEFORE_WAR = Duration.ofMinutes(20);
+            JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(30);
+            DETECTION_WINDOW = Duration.ofMinutes(2);
+
+
+            Bukkit.getLogger().info(
+                    "[WarManager] TEST MODE — timings forcés (1–20 min, prompt 30s)"
+            );
+        } else {
+            // ⚙️ MODE NORMAL — valeurs YAML
+            MIN_TIME_BEFORE_WAR = Duration.ofMinutes(
+                    planning.minTimeBeforeWarMinutes()
+            );
+            MAX_TIME_BEFORE_WAR = Duration.ofHours(
+                    planning.maxTimeBeforeWarHours()
+            );
+            JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(
+                    planning.joinPromptLeadSeconds()
+            );
+
+            DETECTION_WINDOW = Duration.ofSeconds(
+                    warCfg.detection().windowSeconds()
+            );
+
+
+
+            Bukkit.getLogger().info(
+                    "[WarManager] NORMAL MODE — timings depuis config.yml"
+            );
+        }
+    }
+
 }

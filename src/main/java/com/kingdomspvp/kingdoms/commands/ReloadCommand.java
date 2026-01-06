@@ -58,6 +58,8 @@ public class ReloadCommand extends KingdomCommand {
         if (metaClaim != null) KingdomsConfig.warnClaimSizeMismatch(metaClaim);
         if (metaMap != null) KingdomsConfig.warnMapSizeMismatch(metaMap);
 
+        WarManager.applyWarTimingsFromSettings();
+
         context.msg(ChatColor.GREEN + "[SaberKingdoms] Reload terminé.");
     }
 
@@ -81,6 +83,8 @@ public class ReloadCommand extends KingdomCommand {
 
         // 5) Swap atomique des settings runtime
         SettingsProvider.set(newSettings);
+
+        WarManager.applyWarTimingsFromSettings();
 
         context.msg(ChatColor.GREEN + "[SaberKingdoms] Reload HARD effectué.");
         context.msg(ChatColor.RED + "Tous les claims ont été régénérés.");
