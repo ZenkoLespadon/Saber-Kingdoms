@@ -2,6 +2,7 @@
 package com.kingdomspvp.kingdoms.commands;
 
 import com.kingdomspvp.kingdoms.utils.ClaimVisualization;
+import com.kingdomspvp.kingdoms.utils.SettingsProvider;
 import com.massivecraft.factions.FactionsPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -27,40 +28,78 @@ public class ClaimsVizCommand extends KingdomCommand {
 
     @Override
     public void perform(KingdomCommandContext context) {
+
         if (context.player == null) {
             context.msg(ChatColor.RED + "Uniquement en jeu.");
             return;
         }
 
+        // ---- STOP ----
         if (!context.args.isEmpty() && "stop".equalsIgnoreCase(context.args.get(0))) {
             stopGlobal();
             context.msg(ChatColor.YELLOW + "Visualisation arrêtée pour tous.");
             return;
         }
 
-        int seconds = 30;
+        var vizCfg = SettingsProvider.get().commands().vizclaims();
+        int min = vizCfg.minSeconds();
+        int max = vizCfg.maxSeconds();
+        int seconds = vizCfg.defaultSeconds();
+
+        // ---- ARGUMENT SECONDS ----
         if (!context.args.isEmpty()) {
-            try { seconds = Math.max(1, Integer.parseInt(context.args.get(0))); }
-            catch (NumberFormatException ignored) {}
+            String arg = context.args.get(0);
+
+            int parsed;
+            try {
+                parsed = Integer.parseInt(arg);
+            } catch (NumberFormatException e) {
+                context.msg(ChatColor.RED + "Valeur invalide : '" + arg + "'");
+                context.msg(ChatColor.GRAY + "Utilisation : /k vizclaims <seconds>");
+                context.msg(ChatColor.GRAY + "Plage autorisée : " + min + " à " + max + " secondes.");
+                return;
+            }
+
+            if (parsed < min) {
+                context.msg(ChatColor.RED + "Durée trop courte : " + parsed + "s");
+                context.msg(ChatColor.GRAY + "Minimum autorisé : " + min + " secondes.");
+                return;
+            }
+
+            if (parsed > max) {
+                context.msg(ChatColor.RED + "Durée trop longue : " + parsed + "s");
+                context.msg(ChatColor.GRAY + "Maximum autorisé : " + max + " secondes.");
+                return;
+            }
+
+            seconds = parsed;
         }
 
+        // ---- LANCEMENT ----
         stopGlobal();
 
-        final int periodTicks = 10; // 0.5s
-        final int nbTicksPerSecond = 20;
-        final int maxRuns = (seconds * nbTicksPerSecond) / periodTicks;
+        final int periodTicks = vizCfg.periodTicks();
+        final int ticksPerSecond = 20;
+        final int maxRuns = (seconds * ticksPerSecond) / periodTicks;
 
         globalTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(
                 plugin,
                 new Runnable() {
                     int runs = 0;
-                    @Override public void run() {
-                        ClaimVisualization.beginFrameBudget(); // reset budget/compteurs
+
+                    @Override
+                    public void run() {
+                        ClaimVisualization.beginFrameBudget();
 
                         Set<World> worlds = Bukkit.getOnlinePlayers()
-                                .stream().map(Player::getWorld).collect(Collectors.toSet());
+                                .stream()
+                                .map(Player::getWorld)
+                                .collect(Collectors.toSet());
 
-                        if (worlds.isEmpty()) { stopGlobal(); return; }
+                        if (worlds.isEmpty()) {
+                            stopGlobal();
+                            return;
+                        }
 
                         for (World w : worlds) {
                             ClaimVisualization.renderAllClaimsOnceForWorld(w);
@@ -70,11 +109,15 @@ public class ClaimsVizCommand extends KingdomCommand {
                         if (runs >= maxRuns) stopGlobal();
                     }
                 },
-                0L, periodTicks
+                0L,
+                periodTicks
         );
 
-        context.msg(ChatColor.GREEN + "Visualisation des claims pour tous pendant " + seconds + "s. " +
-                ChatColor.DARK_GRAY + "(utilise '/k vizclaims stop' pour couper)");
+        context.msg(
+                ChatColor.GREEN + "Visualisation des claims activée pendant "
+                        + seconds + "s. "
+                        + ChatColor.DARK_GRAY + "(/k vizclaims stop pour arrêter)"
+        );
     }
 
     private void stopGlobal() {
