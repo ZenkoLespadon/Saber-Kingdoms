@@ -6,11 +6,9 @@ import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.utils.ChatUtil;
-import com.kingdomspvp.kingdoms.utils.KingdomsConfig;
-import com.massivecraft.factions.FPlayer;
-import com.massivecraft.factions.FPlayers;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
@@ -50,11 +48,13 @@ public final class WarRuntime {
     // API publique
     public static void begin(War war) { getOrCreate(war).onWarBegan(); }
     public static void onFirstClaimAttacked(War war, Claim attackedDefClaim) { getOrCreate(war).onFirstClaimAttacked(attackedDefClaim); }
+
     public static void tpToWar(String warId, Player p) {
         War war = WarManager.getWar(warId);
         if (war == null) { ChatUtil.sendWarMsg(p, org.bukkit.ChatColor.RED + "Guerre introuvable."); return; }
         getOrCreate(war).teleportPlayer(p);
     }
+
     public static void stopAll() {
         for (WarSession s : SESSIONS.values()) s.stop(true);
         SESSIONS.clear();
@@ -314,7 +314,7 @@ public final class WarRuntime {
             return "Victoire des défenseurs (Royaume " + def + ")";
         }
 
-        // ---- TP rejoindre ----
+
         void teleportPlayer(Player p) {
             if (war.getStatus() != WarStatus.INPROGRESS || !war.hasCombatStarted()) {
                 ChatUtil.sendWarMsg(p, org.bukkit.ChatColor.RED + "Pas en phase de combat."); return;
@@ -473,14 +473,23 @@ public final class WarRuntime {
             for (World w : Bukkit.getWorlds()) if (w.getEnvironment() == World.Environment.NORMAL) return w;
             return Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0);
         }
-        private static final int CLAIM_SIZE = ClaimManager.getActiveClaimSize();
-        private static org.bukkit.Location getClaimCenter(Claim c) {
-            World world = getOverworld(); if (world == null) return null;
-            int cx = c.getGridX() * CLAIM_SIZE + CLAIM_SIZE / 2;
-            int cz = c.getGridZ() * CLAIM_SIZE + CLAIM_SIZE / 2;
+
+        public static Location getClaimCenter(Claim c) {
+            if (c == null) return null;
+
+            World world = getOverworld();
+            if (world == null) return null;
+
+            int size = ClaimManager.getActiveClaimSize();
+            int cx = c.getGridX() * size + size / 2;
+            int cz = c.getGridZ() * size + size / 2;
             int y  = world.getHighestBlockYAt(cx, cz);
-            return new org.bukkit.Location(world, cx + 0.5, y + 1, cz + 0.5);
+
+            System.out.println("Claim center for grid (" + c.getGridX() + "," + c.getGridZ() + ") is at (" + cx + ", " + y + ", " + cz + ")");
+
+            return new Location(world, cx + 0.5, y + 1, cz + 0.5);
         }
+
 
         void onKill(UUID killer, UUID victim) {
             kdas.computeIfAbsent(killer, k -> new KDA()).k++;
