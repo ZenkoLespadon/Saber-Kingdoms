@@ -246,7 +246,7 @@ public final class KingdomsConfig {
                   # -------------------------
                   war:
                     # Utile pour le développement ou les tests (délais plus courts)
-                    test-mode: true
+                    test-mode: false
         
                     # ---------------------
                     # PLANIFICATION
