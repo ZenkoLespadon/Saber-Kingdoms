@@ -4,6 +4,7 @@ package com.kingdomspvp.kingdoms.listeners;
 import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.services.WarManager;
+import com.kingdomspvp.kingdoms.utils.SettingsProvider;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -12,13 +13,11 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 
 import java.util.UUID;
 
-// TODO : Fusionner la branche war avec master
 
 public class WarDeathListener implements Listener {
 
 
-    long nbTicksPerSecond = 20L;
-    long delayBeforeTpMessageSeconds = 15L;
+    private static long DELAY_TICKS;
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
@@ -35,7 +34,7 @@ public class WarDeathListener implements Listener {
         Bukkit.getScheduler().runTaskLater(
                 com.massivecraft.factions.FactionsPlugin.getInstance(),
                 () -> sendTpToWarMessage(playerId, war),
-                nbTicksPerSecond * delayBeforeTpMessageSeconds // 30 secondes
+                DELAY_TICKS
         );
     }
 
@@ -58,5 +57,10 @@ public class WarDeathListener implements Listener {
             }
         }
         return null;
+    }
+
+    public static void reloadSettings() {
+        long seconds = SettingsProvider.get().death().tpMessageDelaySeconds();
+        DELAY_TICKS = 20L * Math.max(0, seconds);
     }
 }

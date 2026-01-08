@@ -14,17 +14,45 @@ import java.util.stream.Collectors;
 
 public class ClaimsVizCommand extends KingdomCommand {
 
+    // --- Runtime settings (reloadables) ---
+    private static int MIN_SECONDS;
+    private static int MAX_SECONDS;
+    private static int DEFAULT_SECONDS;
+    private static int PERIOD_TICKS;
+
+    // --- Task globale ---
     private static Integer globalTaskId = null;
+
     private final FactionsPlugin plugin;
 
     public ClaimsVizCommand(FactionsPlugin plugin) {
         this.plugin = plugin;
-        ClaimVisualization.init(plugin); // injection sûre du Plugin
+
+        ClaimVisualization.init(plugin);
+        reloadSettings();
+
         this.aliases = Arrays.asList("vizclaims", "vizall");
         this.requiredArgs = Collections.emptyList();
         this.helpShort = ChatColor.GRAY + "Trace tous les claims via particules (visible par tous).";
         this.optionalArgs.put("seconds", "");
+        this.permission = "kingdoms.admin.vizclaims";
     }
+
+    // =====================================================
+    // Reload
+    // =====================================================
+
+    public static void reloadSettings() {
+        var cfg = SettingsProvider.get().commands().vizclaims();
+        MIN_SECONDS = cfg.minSeconds();
+        MAX_SECONDS = cfg.maxSeconds();
+        DEFAULT_SECONDS = cfg.defaultSeconds();
+        PERIOD_TICKS = cfg.periodTicks();
+    }
+
+    // =====================================================
+    // Command
+    // =====================================================
 
     @Override
     public void perform(KingdomCommandContext context) {
@@ -35,16 +63,15 @@ public class ClaimsVizCommand extends KingdomCommand {
         }
 
         // ---- STOP ----
-        if (!context.args.isEmpty() && "stop".equalsIgnoreCase(context.args.get(0))) {
+        if (!context.args.isEmpty() && "stop".equalsIgnoreCase(context.args.get(0)) && context.sender.hasPermission(this.permission)) {
             stopGlobal();
             context.msg(ChatColor.YELLOW + "Visualisation arrêtée pour tous.");
             return;
         }
 
-        var vizCfg = SettingsProvider.get().commands().vizclaims();
-        int min = vizCfg.minSeconds();
-        int max = vizCfg.maxSeconds();
-        int seconds = vizCfg.defaultSeconds();
+        reloadSettings();
+
+        int seconds = DEFAULT_SECONDS;
 
         // ---- ARGUMENT SECONDS ----
         if (!context.args.isEmpty()) {
@@ -56,19 +83,19 @@ public class ClaimsVizCommand extends KingdomCommand {
             } catch (NumberFormatException e) {
                 context.msg(ChatColor.RED + "Valeur invalide : '" + arg + "'");
                 context.msg(ChatColor.GRAY + "Utilisation : /k vizclaims <seconds>");
-                context.msg(ChatColor.GRAY + "Plage autorisée : " + min + " à " + max + " secondes.");
+                context.msg(ChatColor.GRAY + "Plage autorisée : " + MIN_SECONDS + " à " + MAX_SECONDS + " secondes.");
                 return;
             }
 
-            if (parsed < min) {
+            if (parsed < MIN_SECONDS) {
                 context.msg(ChatColor.RED + "Durée trop courte : " + parsed + "s");
-                context.msg(ChatColor.GRAY + "Minimum autorisé : " + min + " secondes.");
+                context.msg(ChatColor.GRAY + "Minimum autorisé : " + MIN_SECONDS + " secondes.");
                 return;
             }
 
-            if (parsed > max) {
+            if (parsed > MAX_SECONDS) {
                 context.msg(ChatColor.RED + "Durée trop longue : " + parsed + "s");
-                context.msg(ChatColor.GRAY + "Maximum autorisé : " + max + " secondes.");
+                context.msg(ChatColor.GRAY + "Maximum autorisé : " + MAX_SECONDS + " secondes.");
                 return;
             }
 
@@ -78,9 +105,8 @@ public class ClaimsVizCommand extends KingdomCommand {
         // ---- LANCEMENT ----
         stopGlobal();
 
-        final int periodTicks = vizCfg.periodTicks();
         final int ticksPerSecond = 20;
-        final int maxRuns = (seconds * ticksPerSecond) / periodTicks;
+        final int maxRuns = (seconds * ticksPerSecond) / PERIOD_TICKS;
 
         globalTaskId = Bukkit.getScheduler().scheduleSyncRepeatingTask(
                 plugin,
@@ -110,7 +136,7 @@ public class ClaimsVizCommand extends KingdomCommand {
                     }
                 },
                 0L,
-                periodTicks
+                PERIOD_TICKS
         );
 
         context.msg(
@@ -120,7 +146,11 @@ public class ClaimsVizCommand extends KingdomCommand {
         );
     }
 
-    private void stopGlobal() {
+    // =====================================================
+    // Utils
+    // =====================================================
+
+    private static void stopGlobal() {
         if (globalTaskId != null) {
             Bukkit.getScheduler().cancelTask(globalTaskId);
             globalTaskId = null;

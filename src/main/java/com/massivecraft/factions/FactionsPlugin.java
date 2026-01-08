@@ -10,10 +10,8 @@ import com.kingdomspvp.kingdoms.listeners.*;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
-import com.kingdomspvp.kingdoms.utils.KingdomsConfig;
-import com.kingdomspvp.kingdoms.utils.KingdomsConfigLoader;
-import com.kingdomspvp.kingdoms.utils.LocalDateTimeAdapter;
-import com.kingdomspvp.kingdoms.utils.SettingsProvider;
+import com.kingdomspvp.kingdoms.services.WarRuntime;
+import com.kingdomspvp.kingdoms.utils.*;
 import com.massivecraft.factions.addon.AddonManager;
 import com.massivecraft.factions.addon.FactionsAddon;
 import com.massivecraft.factions.cmd.CmdAutoHelp;
@@ -346,7 +344,12 @@ public class FactionsPlugin extends MPlugin {
 
         getLogger().info("Nombre de claims : " + ClaimManager.getNumClaims());
 
-        WarManager.applyWarTimingsFromSettings();
+        WarManager.reloadSettings();
+        WarRuntime.reloadSettings();
+        WarKDAListener.reloadSettings();
+        WarBlockEditListener.reloadSettings();
+        WarDeathListener.reloadSettings();
+        ClaimVisualization.reloadSettings();
     }
 
 

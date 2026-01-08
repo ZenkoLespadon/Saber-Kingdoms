@@ -60,7 +60,7 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
     public static Duration JOIN_PROMPT_LEAD_TIME; // ex. passez à 5 min en beta
 
     /** Taille de claim (en blocs), reprise du ClaimManager. */
-    public static int claimSize = ClaimManager.getActiveClaimSize();
+    public static int CLAIM_SIZE = ClaimManager.getActiveClaimSize();
 
     private static final WarsJSON warsJSON = new WarsJSON();
 
@@ -88,6 +88,58 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
 
     private static boolean TEST_MODE;
     public static boolean isTestMode() { return TEST_MODE; }
+
+
+    public static void enableTestMode() {
+        TEST_MODE = true;
+        reloadSettings();
+    }
+
+    public static void disableTestMode() {
+        TEST_MODE = false;
+        reloadSettings();
+    }
+
+
+    public static void reloadSettings() {
+
+        var warCfg = SettingsProvider.get().war();
+        var planning = warCfg.planning();
+
+        TEST_MODE = warCfg.testMode();
+
+        if (TEST_MODE) {
+            // 🔬 MODE TEST — valeurs forcées
+            MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
+            MAX_TIME_BEFORE_WAR = Duration.ofMinutes(20);
+            JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(30);
+            DETECTION_WINDOW = Duration.ofMinutes(2);
+
+
+            Bukkit.getLogger().info(
+                    "[WarManager] TEST MODE — timings forcés (1–20 min, prompt 30s)"
+            );
+        } else {
+            // ⚙️ MODE NORMAL — valeurs YAML
+            MIN_TIME_BEFORE_WAR = Duration.ofMinutes(
+                    planning.minTimeBeforeWarMinutes()
+            );
+            MAX_TIME_BEFORE_WAR = Duration.ofHours(
+                    planning.maxTimeBeforeWarHours()
+            );
+            JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(
+                    planning.joinPromptLeadSeconds()
+            );
+
+            DETECTION_WINDOW = Duration.ofSeconds(
+                    warCfg.detection().windowSeconds()
+            );
+
+            Bukkit.getLogger().info(
+                    "[WarManager] NORMAL MODE — timings depuis config.yml"
+            );
+        }
+    }
 
     public static void loadWars(Callback<Boolean> success) {
         warsJSON.load(success);
@@ -669,17 +721,14 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         Integer gx = w.getAttackedGridX();
         Integer gz = w.getAttackedGridZ();
         if (gx == null || gz == null) return null;
+
+        int claimSize = ClaimManager.getActiveClaimSize();
         int centerX = gx * claimSize + claimSize / 2;
         int centerZ = gz * claimSize + claimSize / 2;
+
         return ClaimManager.getClaimByCoordinates(centerX, centerZ);
     }
 
-    public static Location getClaimCenter(Claim c) {
-        int cx = c.getGridX() * claimSize + claimSize / 2; // CLAIM_SIZE = 64
-        int cz = c.getGridZ() * claimSize + claimSize / 2;
-        int y = world.getHighestBlockYAt(cx, cz);
-        return new Location(world, cx + 0.5, y + 1, cz + 0.5);
-    }
 
     /** Cherche un claim adjacent (N/S/E/O) appartenant au royaume attaquant. */
     public static Claim findAdjacentAttackerClaim(War w, Claim attacked) {
@@ -687,11 +736,14 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         int gx = attacked.getGridX();
         int gz = attacked.getGridZ();
 
+        int claimSize = ClaimManager.getActiveClaimSize(); // 🔥 TOUJOURS dynamique
+
         int[][] dirs = {{1,0}, {-1,0}, {0,1}, {0,-1}};
         for (int[] d : dirs) {
             int ngx = gx + d[0], ngz = gz + d[1];
             int blockX = ngx * claimSize + claimSize / 2;
             int blockZ = ngz * claimSize + claimSize / 2;
+
             Claim neighbor = ClaimManager.getClaimByCoordinates(blockX, blockZ);
             if (neighbor != null && attackerKingdomName.equalsIgnoreCase(neighbor.getKingdomName())) {
                 return neighbor;
@@ -700,41 +752,54 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         return null;
     }
 
-    /**
-     * Point de ralliement à 'offset' blocs à l’intérieur du claim 'staging' (attaquant), proche de la frontière avec 'attacked'.
-     */
-    public static Location getStagingPointNearBorder(Claim staging, Claim attacked, int offset) {
-        int sx = staging.getGridX(), sz = staging.getGridZ();
-        int ax = attacked.getGridX(), az = attacked.getGridZ();
 
-        if (sx == ax && sz == az + 1) {
-            // staging au S du attacked → bord nord de staging
-            int x = sx * claimSize + claimSize / 2;
-            int z = sz * claimSize + offset;
-            int y = world.getHighestBlockYAt(x, z);
-            return new Location(world, x + 0.5, y + 1, z + 0.5);
-        } else if (sx == ax && sz == az - 1) {
-            // staging au N du attacked → bord sud de staging
-            int x = sx * claimSize + claimSize / 2;
-            int z = (sz + 1) * claimSize - 1 - offset;
-            int y = world.getHighestBlockYAt(x, z);
-            return new Location(world, x + 0.5, y + 1, z + 0.5);
-        } else if (sz == az && sx == ax + 1) {
-            // staging à l'E du attacked → bord ouest de staging
-            int x = sx * claimSize + offset;
-            int z = sz * claimSize + claimSize / 2;
-            int y = world.getHighestBlockYAt(x, z);
-            return new Location(world, x + 0.5, y + 1, z + 0.5);
-        } else if (sz == az && sx == ax - 1) {
-            // staging à l'O du attacked → bord est de staging
-            int x = (sx + 1) * claimSize - 1 - offset;
-            int z = sz * claimSize + claimSize / 2;
-            int y = world.getHighestBlockYAt(x, z);
-            return new Location(world, x + 0.5, y + 1, z + 0.5);
+    /**
+     * Point de ralliement à 'x_offset' blocs à l’intérieur du claim 'staging' (attaquant), proche de la frontière avec 'attacked'.
+     */
+    public static Location getStagingPointNearBorder(
+            Claim staging,
+            Claim attacked,
+            int offset_from_border,
+            int offset_from_ground
+    ) {
+        if (staging == null || attacked == null) return null;
+
+        World world = Bukkit.getWorlds().get(0);
+        int size = ClaimManager.getActiveClaimSize();
+
+        int sx = staging.getGridX();
+        int sz = staging.getGridZ();
+        int ax = attacked.getGridX();
+        int az = attacked.getGridZ();
+
+        int x, z;
+
+        // staging à gauche
+        if (sx == ax - 1 && sz == az) {
+            x = (sx + 1) * size - offset_from_border;
+            z = sz * size + size / 2;
+        }
+        // staging à droite
+        else if (sx == ax + 1 && sz == az) {
+            x = sx * size + offset_from_border;
+            z = sz * size + size / 2;
+        }
+        // staging au nord
+        else if (sz == az - 1 && sx == ax) {
+            x = sx * size + size / 2;
+            z = (sz + 1) * size - offset_from_border;
+        }
+        // staging au sud
+        else if (sz == az + 1 && sx == ax) {
+            x = sx * size + size / 2;
+            z = sz * size + offset_from_border;
+        }
+        else {
+            return null; // PAS ADJACENT
         }
 
-        // Non adjacent → centre du staging
-        return getClaimCenter(staging);
+        int y = world.getHighestBlockYAt(x, z);
+        return new Location(world, x + 0.5, y + offset_from_ground, z + 0.5);
     }
 
 
@@ -824,58 +889,4 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
             clearSidebarFor(p); // au cas où des objectifs aient survécu à un reload
         }
     }
-
-    public static void enableTestMode() {
-        TEST_MODE = true;
-        applyWarTimingsFromSettings();
-    }
-
-    public static void disableTestMode() {
-        TEST_MODE = false;
-        applyWarTimingsFromSettings();
-    }
-
-
-    public static void applyWarTimingsFromSettings() {
-
-        var warCfg = SettingsProvider.get().war();
-        var planning = warCfg.planning();
-
-        TEST_MODE = warCfg.testMode();
-
-        if (TEST_MODE) {
-            // 🔬 MODE TEST — valeurs forcées
-            MIN_TIME_BEFORE_WAR = Duration.ofMinutes(1);
-            MAX_TIME_BEFORE_WAR = Duration.ofMinutes(20);
-            JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(30);
-            DETECTION_WINDOW = Duration.ofMinutes(2);
-
-
-            Bukkit.getLogger().info(
-                    "[WarManager] TEST MODE — timings forcés (1–20 min, prompt 30s)"
-            );
-        } else {
-            // ⚙️ MODE NORMAL — valeurs YAML
-            MIN_TIME_BEFORE_WAR = Duration.ofMinutes(
-                    planning.minTimeBeforeWarMinutes()
-            );
-            MAX_TIME_BEFORE_WAR = Duration.ofHours(
-                    planning.maxTimeBeforeWarHours()
-            );
-            JOIN_PROMPT_LEAD_TIME = Duration.ofSeconds(
-                    planning.joinPromptLeadSeconds()
-            );
-
-            DETECTION_WINDOW = Duration.ofSeconds(
-                    warCfg.detection().windowSeconds()
-            );
-
-
-
-            Bukkit.getLogger().info(
-                    "[WarManager] NORMAL MODE — timings depuis config.yml"
-            );
-        }
-    }
-
 }

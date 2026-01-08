@@ -6,6 +6,7 @@ import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.utils.ChatUtil;
+import com.kingdomspvp.kingdoms.utils.SettingsProvider;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -21,25 +22,24 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class WarRuntime {
 
-    // Réglages
-    public static int WAR_DURATION_SECONDS = 150; // 2min30
+    // Durée d’un round
+    public static int WAR_DURATION_SECONDS;
 
     // Rounds
-    private static final int MAX_ROUNDS = 4;
-    /** Réduction de gain par round pour approcher la même durée totale qu'avec d’anciens rounds de 10min. */
-    private static final double ROUND_GAIN_FACTOR = 0.87; // ~ -13% par round
+    private static int MAX_ROUNDS;
+    private static double ROUND_GAIN_FACTOR;
 
-    /** Cible fixe : 1000 pts pour “capturer”. */
-    private static final double TARGET_POINTS = 1000.0;
-    /** On veut atteindre 1000 pts en 80% de la durée (ratio = 1). */
-    private static final double TARGET_FRACTION = 0.80;
-    private static final double BASE_TIME_AT_RATIO_1 = WAR_DURATION_SECONDS * TARGET_FRACTION; // 120s
-    /** Gain de base (pts/s) quand ratio = 1 et round 1. */
-    private static final double BASE_RATE = TARGET_POINTS / BASE_TIME_AT_RATIO_1; // ≈ 8.333 pts/s
+    // Scoring
+    private static double TARGET_POINTS;
 
-    /** Bornes de ratio → 60..240s */
-    private static final double RATIO_MIN = 0.5;  // 240s
-    private static final double RATIO_MAX = 2.0;  // 60s
+    private static double BASE_RATE;
+
+    // Ratios
+    private static double RATIO_MIN;
+    private static double RATIO_MAX;
+
+    private static int TP_OFFSET_FROM_BORDER;
+    private static int TP_Y_OFFSET;
 
 
     public static void onDetectionWindowStarted(War war, Duration window) { getOrCreate(war).startDetectionWindow(window); }
@@ -73,6 +73,7 @@ public final class WarRuntime {
             String n = o.getName();
             if (n != null && n.startsWith("sbwar_")) o.unregister();
         }
+
         for (org.bukkit.scoreboard.Team t : new ArrayList<>(sb.getTeams())) {
             String n = t.getName();
             if (n != null && (n.startsWith("war_static_") || n.startsWith("war_line_"))) {
@@ -80,6 +81,7 @@ public final class WarRuntime {
             }
         }
     }
+
     public static void stopAllAndClearAllUIs() {
         stopAll();
         for (Player p : Bukkit.getOnlinePlayers()) clearSidebarFor(p);
@@ -103,6 +105,7 @@ public final class WarRuntime {
             s.attachUIIfEligible(p); // recrée bossbar + scoreboard dédiés
         }
     }
+
     public static void onPlayerDeath(java.util.UUID id) {
         if (id == null) return;
         for (WarSession s : SESSIONS.values()) s.detachUI(id); // évite les refs fantômes
@@ -143,19 +146,50 @@ public final class WarRuntime {
         return true;
     }
 
+    public static void reloadSettings() {
+
+        var war = SettingsProvider.get().war();
+
+        WAR_DURATION_SECONDS = war.combat().durationSeconds();
+        MAX_ROUNDS = war.combat().maxRounds();
+        ROUND_GAIN_FACTOR = war.combat().roundGainFactor();
+
+        TARGET_POINTS = war.combat().targetPoints();
+        double TARGET_FRACTION = war.combat().targetFraction();
+
+        RATIO_MIN = war.combat().ratioMin();
+        RATIO_MAX = war.combat().ratioMax();
+
+        // --- Valeurs dérivées (TOUJOURS recalculées) ---
+        double BASE_TIME_AT_RATIO_1 = WAR_DURATION_SECONDS * TARGET_FRACTION;
+
+        // Sécurité anti-division par zéro
+        if (BASE_TIME_AT_RATIO_1 <= 0.0) {
+            BASE_TIME_AT_RATIO_1 = 1.0;
+        }
+
+        BASE_RATE = TARGET_POINTS / BASE_TIME_AT_RATIO_1;
+
+        TP_OFFSET_FROM_BORDER = war.teleport().offsetFromBorder();
+        TP_Y_OFFSET = war.teleport().yOffset();
+    }
+
+
     // ===================== SESSION =====================
     private static final class WarSession {
         private final War war;
         private final org.bukkit.plugin.Plugin plugin = com.massivecraft.factions.FactionsPlugin.getInstance();
 
         private double pointsAttackers = 0.0;
-        private double targetPoints    = TARGET_POINTS; // S*
         private double roundGainMultiplier = 1.0;
+
+        private int secondsLeft;
+        private double targetPoints;
+
 
         private int roundIndex = 1;               // 1..MAX_ROUNDS
         private boolean combatActive = false;     // timer combat (round) actif ?
 
-        private int seconds = WAR_DURATION_SECONDS;
         private int taskId = -1;
         private Claim attackedClaim;
 
@@ -190,11 +224,14 @@ public final class WarRuntime {
 
         void onFirstClaimAttacked(Claim c) {
             this.attackedClaim = c;
-            this.seconds = WAR_DURATION_SECONDS;
             this.combatActive = true;
-            this.targetPoints = TARGET_POINTS;   // objectif fixe
+
+            this.secondsLeft = WAR_DURATION_SECONDS;
+            this.targetPoints = TARGET_POINTS;
+
             this.pointsAttackers = 0.0;
         }
+
 
         void stop(boolean announce) {
             if (taskId != -1) { Bukkit.getScheduler().cancelTask(taskId); taskId = -1; }
@@ -221,9 +258,10 @@ public final class WarRuntime {
 
                         if (combatActive) {
                             if (pointsAttackers >= targetPoints) { endWar(true); return; }
-                            if (seconds <= 0) { endWar(false); return; }
-                            seconds--;
+                            if (secondsLeft <= 0) { endWar(false); return; }
+                            secondsLeft--;
                         }
+
                     },
                     0L, 20L
             );
@@ -296,6 +334,7 @@ public final class WarRuntime {
                 Player p = Bukkit.getPlayer(id);
                 if (p != null) WarManager.clearSidebarFor(p);
             }
+
             for (UUID id : war.getDefenderPlayers()) {
                 Player p = Bukkit.getPlayer(id);
                 if (p != null) WarManager.clearSidebarFor(p);
@@ -332,7 +371,7 @@ public final class WarRuntime {
             } else {
                 Claim staging = WarManager.findAdjacentAttackerClaim(war, attackedClaim);
                 if (staging == null) { ChatUtil.sendWarMsg(p, org.bukkit.ChatColor.RED + "Aucun point de ralliement attaquant adjacent."); return; }
-                tp = WarManager.getStagingPointNearBorder(staging, attackedClaim, 10);
+                tp = WarManager.getStagingPointNearBorder(staging, attackedClaim, TP_OFFSET_FROM_BORDER, TP_Y_OFFSET);
             }
             p.teleport(tp);
         }
@@ -346,7 +385,7 @@ public final class WarRuntime {
             for (UUID id : shouldHave) {
                 Player p = Bukkit.getPlayer(id);
                 if (p != null && p.isOnline()) {
-                    ui.computeIfAbsent(id, k -> BossAndBoard.attachTo(p, seconds, war, targetPoints));
+                    ui.computeIfAbsent(id, k -> BossAndBoard.attachTo(p, secondsLeft, war, targetPoints));
                 }
             }
             ui.entrySet().removeIf(e -> {
@@ -425,7 +464,7 @@ public final class WarRuntime {
                 String kdaStr = k.k + "/" + k.d + "/" + k.a;
 
                 entry.getValue().update(
-                        seconds,
+                        secondsLeft,
                         allies,
                         enemies,
                         kdaStr,
@@ -509,7 +548,7 @@ public final class WarRuntime {
             java.util.UUID id = p.getUniqueId();
             boolean registered = war.getAttackerPlayers().contains(id) || war.getDefenderPlayers().contains(id);
             if (!registered) return;
-            ui.computeIfAbsent(id, k -> BossAndBoard.attachTo(p, seconds, war, targetPoints));
+            ui.computeIfAbsent(id, k -> BossAndBoard.attachTo(p, secondsLeft, war, targetPoints));
         }
         void detachUI(java.util.UUID id) {
             BossAndBoard bb = ui.remove(id);
@@ -766,6 +805,7 @@ public final class WarRuntime {
                 default: return BarColor.WHITE;
             }
         }
+
         private static String makeSidebarTitle(War war) {
             org.bukkit.ChatColor atk = war.getAttackerKingdom().getColor();
             org.bukkit.ChatColor def = war.getDefenderKingdom().getColor();
@@ -773,9 +813,11 @@ public final class WarRuntime {
                     + org.bukkit.ChatColor.GRAY + " vs "
                     + def + "" + org.bukkit.ChatColor.BOLD + war.getDefenderKingdom().getName();
         }
+
         private static String makeBossTitle(War war, double attackerPoints, double targetPoints) {
             return makeSidebarTitle(war) + org.bukkit.ChatColor.GRAY + "  [" + fmt1(attackerPoints) + "/" + fmt1(targetPoints) + "]";
         }
+
         private static String fmt1(double v) { return String.format(java.util.Locale.US, "%.1f", v); }
 
         void updateDetection(int secondsLeft, String objectiveText) {
@@ -794,5 +836,4 @@ public final class WarRuntime {
     }
 
     private static final class KDA { int k, d, a; }
-
 }

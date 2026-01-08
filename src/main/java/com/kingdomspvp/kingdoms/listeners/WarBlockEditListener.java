@@ -5,6 +5,7 @@ import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
+import com.kingdomspvp.kingdoms.utils.SettingsProvider;
 import com.massivecraft.factions.FactionsPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -21,10 +22,7 @@ import java.util.Collection;
 
 public final class WarBlockEditListener implements Listener {
 
-    static long nbTicksPerSecond = 20L;
-    static long nbSeconds = 20L;
-
-    private static final long REVERT_AFTER_TICKS = nbTicksPerSecond * nbSeconds;
+    private static long REVERT_AFTER_TICKS;
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onBlockBreak(BlockBreakEvent e) {
@@ -101,5 +99,10 @@ public final class WarBlockEditListener implements Listener {
             }
         }
         return false;
+    }
+
+    public static void reloadSettings() {
+        long seconds = SettingsProvider.get().blocks().revertAfterSeconds();
+        REVERT_AFTER_TICKS = 20L * Math.max(1, seconds);
     }
 }

@@ -1,12 +1,13 @@
 // src/main/java/com/kingdomspvp/kingdoms/commands/ReloadCommand.java
 package com.kingdomspvp.kingdoms.commands;
 
-import com.kingdomspvp.kingdoms.utils.KingdomsConfig;
+import com.kingdomspvp.kingdoms.listeners.WarBlockEditListener;
+import com.kingdomspvp.kingdoms.listeners.WarDeathListener;
+import com.kingdomspvp.kingdoms.listeners.WarKDAListener;
+import com.kingdomspvp.kingdoms.services.WarRuntime;
+import com.kingdomspvp.kingdoms.utils.*;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
-import com.kingdomspvp.kingdoms.utils.KingdomsConfigLoader;
-import com.kingdomspvp.kingdoms.utils.KingdomsSettings;
-import com.kingdomspvp.kingdoms.utils.SettingsProvider;
 import com.massivecraft.factions.FactionsPlugin;
 import org.bukkit.ChatColor;
 
@@ -38,57 +39,59 @@ public class ReloadCommand extends KingdomCommand {
         boolean hard = !context.args.isEmpty()
                 && context.args.get(0).equalsIgnoreCase("hard");
 
+        reload(context, hard);
+    }
+
+
+
+    private void reload(KingdomCommandContext context, boolean hard) {
+
+        // 0) HARD → arrêt propre AVANT tout
         if (hard) {
-            reloadHard(context);
+            WarManager.stopAllAndClearAllUIs();
+        }
+
+        // 1) S'assurer que la config existe
+        KingdomsConfig.ensureDefaultConfig(plugin);
+
+        // 2) Charger la config (intention admin)
+        KingdomsSettings newSettings = KingdomsConfigLoader.load(plugin);
+
+        // 3) HARD → appliquer changements destructifs
+        if (hard) {
+            ClaimManager.hardRegenerateClaims(
+                    newSettings.claims().mapSize(),
+                    newSettings.claims().claimSize()
+            );
         } else {
-            reloadSoft(context);
+            // SOFT → juste warnings si mismatch
+            Integer metaClaim = ClaimManager.getStoredClaimSize();
+            Integer metaMap   = ClaimManager.getStoredMapSize();
+            if (metaClaim != null) KingdomsConfig.warnClaimSizeMismatch(metaClaim);
+            if (metaMap != null)   KingdomsConfig.warnMapSizeMismatch(metaMap);
+        }
+
+        // 4) Swap atomique des settings runtime
+        SettingsProvider.set(newSettings);
+
+        // 5) Recharger les systèmes runtime
+        WarManager.reloadSettings();
+        WarRuntime.reloadSettings();
+        WarKDAListener.reloadSettings();
+        WarBlockEditListener.reloadSettings();
+        WarDeathListener.reloadSettings();
+        ClaimVisualization.reloadSettings();
+        //ClaimsVizCommand se reload dans le perform()
+
+        // 6) Feedback admin
+        context.msg(ChatColor.GREEN + "[SaberKingdoms] Reload "
+                + (hard ? "HARD" : "soft") + " terminé.");
+
+        if (hard) {
+            context.msg(ChatColor.RED + "Tous les claims ont été régénérés.");
         }
     }
 
-
-    private void reloadSoft(KingdomCommandContext context) {
-        KingdomsConfig.ensureDefaultConfig(plugin);
-
-        KingdomsSettings settings = KingdomsConfigLoader.load(plugin);
-        SettingsProvider.set(settings);
-
-        // check meta vs config (intention)
-        Integer metaClaim = ClaimManager.getStoredClaimSize();
-        Integer metaMap   = ClaimManager.getStoredMapSize();
-        if (metaClaim != null) KingdomsConfig.warnClaimSizeMismatch(metaClaim);
-        if (metaMap != null) KingdomsConfig.warnMapSizeMismatch(metaMap);
-
-        WarManager.applyWarTimingsFromSettings();
-
-        context.msg(ChatColor.GREEN + "[SaberKingdoms] Reload terminé.");
-    }
-
-
-    private void reloadHard(KingdomCommandContext context) {
-
-        // 1) Stopper proprement les guerres et UIs
-        WarManager.stopAllAndClearAllUIs();
-
-        // 2) S'assurer que la config existe (comme au boot)
-        KingdomsConfig.ensureDefaultConfig(plugin);
-
-        // 3) Charger la config -> settings (INTENTION ADMIN)
-        KingdomsSettings newSettings = KingdomsConfigLoader.load(plugin);
-
-        // 4) Appliquer la nouvelle géométrie (DESTRUCTIF)
-        ClaimManager.hardRegenerateClaims(
-                newSettings.claims().mapSize(),
-                newSettings.claims().claimSize()
-        );
-
-        // 5) Swap atomique des settings runtime
-        SettingsProvider.set(newSettings);
-
-        WarManager.applyWarTimingsFromSettings();
-
-        context.msg(ChatColor.GREEN + "[SaberKingdoms] Reload HARD effectué.");
-        context.msg(ChatColor.RED + "Tous les claims ont été régénérés.");
-    }
 
     @Override
     public String getUsageTranslation() {

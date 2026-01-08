@@ -310,7 +310,7 @@ public final class KingdomsConfig {
                       # Distance de la bordure du claim lors d'une téléportation.
                       offset-from-border: 10
         
-                      # Distance du sol lors d'une téléportation.
+                      # Distance du sol lors d'une téléportation. (inutile)
                       y-offset: 1
         
                     # ---------------------
