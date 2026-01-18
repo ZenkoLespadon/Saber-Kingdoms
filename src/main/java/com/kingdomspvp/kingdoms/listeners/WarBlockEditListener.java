@@ -5,7 +5,7 @@ import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
-import com.kingdomspvp.kingdoms.utils.SettingsProvider;
+import com.kingdomspvp.kingdoms.utils.data.SettingsProvider;
 import com.massivecraft.factions.FactionsPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;

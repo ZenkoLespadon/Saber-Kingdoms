@@ -397,6 +397,12 @@
             <version>3.0.5</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>com.github.Zrips</groupId>
+            <artifactId>Jobs</artifactId>
+            <version>v5.2.6.2</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <repositories>

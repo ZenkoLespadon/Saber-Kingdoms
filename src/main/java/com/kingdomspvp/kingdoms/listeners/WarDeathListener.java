@@ -4,7 +4,7 @@ package com.kingdomspvp.kingdoms.listeners;
 import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.services.WarManager;
-import com.kingdomspvp.kingdoms.utils.SettingsProvider;
+import com.kingdomspvp.kingdoms.utils.data.SettingsProvider;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;

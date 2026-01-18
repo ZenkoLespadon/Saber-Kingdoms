@@ -1,7 +1,7 @@
-package com.kingdomspvp.kingdoms.utils;
+package com.kingdomspvp.kingdoms.utils.data;
 
-import com.google.gson.reflect.TypeToken;
 import com.kingdomspvp.kingdoms.model.Claim;
+import com.kingdomspvp.kingdoms.utils.Callback;
 import com.massivecraft.factions.FactionsPlugin;
 import com.massivecraft.factions.util.Logger;
 import com.massivecraft.factions.zcore.util.DiscUtil;

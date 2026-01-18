@@ -1,4 +1,4 @@
-package com.kingdomspvp.kingdoms.utils;
+package com.kingdomspvp.kingdoms.utils.data;
 
 import com.google.gson.*;
 import java.lang.reflect.Type;

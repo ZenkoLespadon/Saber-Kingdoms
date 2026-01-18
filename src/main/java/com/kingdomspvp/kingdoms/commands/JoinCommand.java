@@ -30,7 +30,7 @@ public class JoinCommand extends KingdomCommand {
         }
 
         String kingdomName = context.args.get(0);
-        Kingdom kingdom = context.plugin.getKingdomsManager().getKingdomByName(kingdomName);
+        Kingdom kingdom = KingdomsManager.getKingdomByName(kingdomName);
 
         if (kingdom != null) {
             context.player.sendMessage(ChatColor.GRAY + "Vous avez rejoint le royaume : " + kingdom.getColor() + kingdom.getName());

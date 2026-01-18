@@ -2,11 +2,10 @@ package com.kingdomspvp.kingdoms.services;
 
 import com.kingdomspvp.kingdoms.model.Claim;
 import com.kingdomspvp.kingdoms.utils.Callback;
-import com.kingdomspvp.kingdoms.utils.ClaimsJSON;
-import com.kingdomspvp.kingdoms.utils.KingdomsConfig;
+import com.kingdomspvp.kingdoms.utils.data.ClaimsJSON;
+import com.kingdomspvp.kingdoms.utils.data.KingdomsConfig;
 import org.bukkit.Bukkit;
 
-import java.nio.file.Files;
 import java.util.*;
 
 public class ClaimManager {

@@ -2,7 +2,7 @@
 package com.kingdomspvp.kingdoms.commands;
 
 import com.kingdomspvp.kingdoms.utils.ClaimVisualization;
-import com.kingdomspvp.kingdoms.utils.SettingsProvider;
+import com.kingdomspvp.kingdoms.utils.data.SettingsProvider;
 import com.massivecraft.factions.FactionsPlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;

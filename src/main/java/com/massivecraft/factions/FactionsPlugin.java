@@ -12,6 +12,10 @@ import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
 import com.kingdomspvp.kingdoms.services.WarRuntime;
 import com.kingdomspvp.kingdoms.utils.*;
+import com.kingdomspvp.kingdoms.utils.data.KingdomsConfig;
+import com.kingdomspvp.kingdoms.utils.data.KingdomsConfigLoader;
+import com.kingdomspvp.kingdoms.utils.data.LocalDateTimeAdapter;
+import com.kingdomspvp.kingdoms.utils.data.SettingsProvider;
 import com.massivecraft.factions.addon.AddonManager;
 import com.massivecraft.factions.addon.FactionsAddon;
 import com.massivecraft.factions.cmd.CmdAutoHelp;
@@ -70,7 +74,6 @@ import java.util.*;
 public class FactionsPlugin extends MPlugin {
 
     public static FactionsPlugin instance;
-    private KingdomsManager kingdomsManager;
     private final Gson gsonSerializer = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().enableComplexMapKeySerialization().excludeFieldsWithModifiers(Modifier.TRANSIENT, Modifier.VOLATILE)
             .registerTypeAdapter(new TypeToken<Map<Permissable, Map<PermissableAction, Access>>>() {
             }.getType(), new PermissionsMapTypeAdapter())
@@ -112,6 +115,8 @@ public class FactionsPlugin extends MPlugin {
     private Integer AutoLeaveTask = null;
     private ClipPlaceholderAPIManager clipPlaceholderAPIManager;
     private boolean mvdwPlaceholderAPIManager = false;
+
+    public String SERVER_TYPE;
 
     public FactionsPlugin() {
         instance = this;
@@ -272,6 +277,11 @@ public class FactionsPlugin extends MPlugin {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+
+            SERVER_TYPE = SettingsProvider.get().serverType();
+
+            Bukkit.getLogger().info("[Kingdoms] Server type: " + SERVER_TYPE);
+
 
             Bukkit.getPluginManager().registerEvents(
                     new KingdomProtectionListener(), this
@@ -557,9 +567,5 @@ public class FactionsPlugin extends MPlugin {
 
     public FactionsPlayerListener getFactionsPlayerListener() {
         return this.factionsPlayerListener;
-    }
-
-    public KingdomsManager getKingdomsManager() {
-        return kingdomsManager;
     }
 }

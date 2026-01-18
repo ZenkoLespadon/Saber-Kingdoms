@@ -1,7 +1,6 @@
-package com.kingdomspvp.kingdoms.utils;
+package com.kingdomspvp.kingdoms.utils.data;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -14,6 +13,8 @@ public final class KingdomsConfig {
 
     private static FileConfiguration cfg;
     private static boolean VALID = false;
+
+    public static String SERVER_TYPE;
 
     // ===== CLAIMS (INTENTION ADMIN) =====
     public static int CONFIG_MAP_SIZE;
@@ -73,6 +74,8 @@ public final class KingdomsConfig {
         cfg = YamlConfiguration.loadConfiguration(file);
 
         try {
+            SERVER_TYPE = cfg.getString("server.type", "KINGDOMS").toUpperCase();
+
             CONFIG_MAP_SIZE  = requireInt("claims.map-size");
             CONFIG_CLAIM_SIZE = requireInt("claims.claim-size");
 
@@ -175,7 +178,9 @@ public final class KingdomsConfig {
                   # Toute modification est prise en compte après /k reload ou un redémarrage du serveur.
                   # Certaines valeurs nécessitent /k reload hard (voir sections concernées).
              
-             
+                  server:
+                    type: "KINGDOMS"   # HUB | KINGDOMS | MINAGE
+                
              
                   # -------------------------
                   # CLAIMS

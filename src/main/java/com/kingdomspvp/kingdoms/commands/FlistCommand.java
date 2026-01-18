@@ -24,7 +24,6 @@ public class FlistCommand extends KingdomCommand {
     @Override
     public void perform(KingdomCommandContext context) {
         CommandSender sender = context.sender;
-        KingdomsManager kingdomsManager = plugin.getKingdomsManager();
 
         if (!(sender instanceof Player)) {
             context.msg("Commande réservée aux joueurs.");
@@ -42,7 +41,7 @@ public class FlistCommand extends KingdomCommand {
         if (context.args.isEmpty()) {
             // Affiche les factions du royaume du joueur
             String factionName = playerFaction.getTag();
-            Kingdom kingdom = kingdomsManager.getKingdomByFactionName(factionName);
+            Kingdom kingdom = KingdomsManager.getKingdomByFactionName(factionName);
             if (kingdom == null) {
                 context.msg("Le royaume pour votre faction n'a pas été trouvé.");
                 return;
@@ -51,7 +50,7 @@ public class FlistCommand extends KingdomCommand {
         } else {
             // Affiche les factions du royaume spécifié
             String kingdomName = context.args.get(0);
-            Kingdom kingdom = kingdomsManager.getKingdomByName(kingdomName);
+            Kingdom kingdom = KingdomsManager.getKingdomByName(kingdomName);
             if (kingdom == null) {
                 context.msg("Le royaume spécifié n'existe pas.");
                 return;

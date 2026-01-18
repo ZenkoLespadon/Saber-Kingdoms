@@ -1,4 +1,4 @@
-package com.kingdomspvp.kingdoms.utils;
+package com.kingdomspvp.kingdoms.utils.data;
 
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -81,7 +81,15 @@ public final class KingdomsConfigLoader {
                 cfg.getInt("death.tp-message-delay-seconds")
         );
 
+        String serverType = cfg.getString("server.type", "KINGDOMS").toUpperCase();
+
+        if (!List.of("HUB","KINGDOMS","MINAGE").contains(serverType)) {
+            throw new IllegalStateException("server.type");
+        }
+
+
         return new KingdomsSettings(
+                serverType,
                 new KingdomsSettings.Claims(mapSize, claimSize),
                 viz, commands, war, blocks, death
         );

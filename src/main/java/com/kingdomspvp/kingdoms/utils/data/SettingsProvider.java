@@ -1,4 +1,4 @@
-package com.kingdomspvp.kingdoms.utils;
+package com.kingdomspvp.kingdoms.utils.data;
 
 import java.util.concurrent.atomic.AtomicReference;
 

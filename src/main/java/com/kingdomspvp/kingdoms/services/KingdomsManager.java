@@ -2,7 +2,7 @@ package com.kingdomspvp.kingdoms.services;
 
 import com.kingdomspvp.kingdoms.listeners.TablistKingdomColors;
 import com.kingdomspvp.kingdoms.utils.Callback;
-import com.kingdomspvp.kingdoms.utils.KingdomsJSON;
+import com.kingdomspvp.kingdoms.utils.data.KingdomsJSON;
 import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;

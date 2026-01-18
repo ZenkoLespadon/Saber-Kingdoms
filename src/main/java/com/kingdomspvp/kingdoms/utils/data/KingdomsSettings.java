@@ -1,8 +1,9 @@
-package com.kingdomspvp.kingdoms.utils;
+package com.kingdomspvp.kingdoms.utils.data;
 
 import java.util.List;
 
 public record KingdomsSettings(
+        String serverType,
         Claims claims,
         Visualization visualization,
         Commands commands,

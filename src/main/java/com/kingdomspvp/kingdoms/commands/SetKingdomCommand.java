@@ -37,7 +37,7 @@ public class SetKingdomCommand extends KingdomCommand {
             return;
         }
 
-        Kingdom kingdom = context.plugin.getKingdomsManager().getKingdomByName(kingdomName);
+        Kingdom kingdom = KingdomsManager.getKingdomByName(kingdomName);
         if (kingdom == null) {
             sender.sendMessage(ChatColor.RED + "Royaume introuvable: " + kingdomName);
             return;
