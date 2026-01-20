@@ -326,6 +326,8 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
 
         sendToAttackers(w, buildWaitForAttackMessage(w.getDefenderKingdom()));
 
+        sendToDefenders(w, buildDefendersPrepareMessage(w));
+
         Bukkit.getPluginManager().callEvent(new WarStartEvent(w));
 
         WarRuntime.begin(w);
@@ -540,6 +542,16 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
             if (p != null && p.isOnline()) p.spigot().sendMessage(comps);
         }
     }
+
+    public static BaseComponent[] buildDefendersPrepareMessage(War w) {
+        String atkName = ChatUtil.kingdomName(w.getAttackerKingdom());
+        String legacy = ChatUtil.prefixWithWar(
+                ChatColor.RED + "Le royaume " + atkName
+                        + ChatColor.GOLD + " attaque ! Préparez-vous à défendre vos claims."
+        );
+        return net.md_5.bungee.api.chat.TextComponent.fromLegacyText(legacy);
+    }
+
 
     public static BaseComponent[] buildWaitForAttackMessage(Kingdom defender) {
         String defName = ChatUtil.kingdomName(defender);
