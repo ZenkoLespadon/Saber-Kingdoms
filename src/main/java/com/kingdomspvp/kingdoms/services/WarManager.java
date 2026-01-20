@@ -443,6 +443,11 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
             }
         }
 
+        int pow = PowerCalculator.compute(player);
+        war.setPlayerPower(player.getUniqueId(), pow);
+
+        Bukkit.getLogger().info("[War] " + player.getName() + " inscrit en cours de guerre avec power = " + pow);
+
         return added;
     }
 

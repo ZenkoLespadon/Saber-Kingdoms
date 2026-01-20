@@ -23,6 +23,8 @@ public class War {
 
     private final Set<String> attackableDefenderClaims = new HashSet<>();
 
+    private final Map<UUID, Integer> playerPowers = new HashMap<>();
+
     public War(String id, Kingdom attacker, Kingdom defender, LocalDateTime start) {
         this.id = id;
         this.attackerKingdom = attacker;
@@ -130,4 +132,16 @@ public class War {
         this.winner = winner;
     }
 
+
+    public void setPlayerPower(UUID id, int power) {
+        playerPowers.put(id, power);
+    }
+
+    public int getPlayerPower(UUID id) {
+        return playerPowers.getOrDefault(id, 50); // sécurité
+    }
+
+    public Map<UUID, Integer> getAllPowers() {
+        return playerPowers;
+    }
 }

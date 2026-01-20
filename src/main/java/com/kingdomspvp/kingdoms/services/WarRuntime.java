@@ -6,6 +6,7 @@ import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.utils.ChatUtil;
+import com.kingdomspvp.kingdoms.utils.PowerCalculator;
 import com.kingdomspvp.kingdoms.utils.data.SettingsProvider;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
@@ -402,7 +403,7 @@ public final class WarRuntime {
             if (inDetectionWindow && !combatActive) {
                 for (var entry : ui.entrySet()) {
                     UUID id = entry.getKey();
-                    Player p = org.bukkit.Bukkit.getPlayer(id);
+                    Player p = Bukkit.getPlayer(id);
                     if (p == null) continue;
 
                     entry.getValue().updateDetection(
@@ -414,50 +415,80 @@ public final class WarRuntime {
             }
 
             if (attackedClaim != null) {
-                // Effectifs inscrits dynamiques
-                this.A = Math.max(1, war.getAttackerPlayers().size());
-                this.D = Math.max(1, war.getDefenderPlayers().size());
 
-                int aNow = attackersInClaimNow();
-                int dNow = defendersInClaimNow();
+                int gx = attackedClaim.getGridX();
+                int gz = attackedClaim.getGridZ();
+
+                // Listes des powers des joueurs présents dans le claim
+                List<Integer> atkPowers = new ArrayList<>();
+                List<Integer> defPowers = new ArrayList<>();
+
+                for (UUID id : war.getAttackerPlayers()) {
+                    Player p = Bukkit.getPlayer(id);
+                    if (p != null && p.isOnline() && isInGrid(p, gx, gz)) {
+                        atkPowers.add(war.getPlayerPower(id));
+                    }
+                }
+
+                for (UUID id : war.getDefenderPlayers()) {
+                    Player p = Bukkit.getPlayer(id);
+                    if (p != null && p.isOnline() && isInGrid(p, gx, gz)) {
+                        defPowers.add(war.getPlayerPower(id));
+                    }
+                }
+
+                int aNow = atkPowers.size();
+                int dNow = defPowers.size();
 
                 if (aNow > 0) {
-                    // Fractions de présence (0..1)
-                    double fA = (double) aNow / Math.max(1, A);
-                    double fD = (double) dNow / Math.max(1, D);
 
-                    // Règle voulue + cas particuliers :
-                    // - ratio = fA / fD si dNow > 0
-                    // - si dNow == 0 :
-                    //      * si fA == 1.0  -> ratio = 2.0  (2/2 vs 0/2 → 60s)
-                    //      * sinon          -> ratio = fA  (1/2 vs 0/2 → 0.5 → 240s)
+                    // === 1) Calcul puissance effective des deux groupes ===
+                    double effA = PowerCalculator.effectivePower(atkPowers);
+                    double effD = PowerCalculator.effectivePower(defPowers);
+
+                    // === 2) Ratio basé sur la puissance effective ===
                     double ratio;
-                    if (dNow > 0) {
-                        ratio = fA / fD;
+                    if (effD > 0) {
+                        ratio = effA / effD;
                     } else {
-                        ratio = (fA >= 1.0) ? 2.0 : fA;
+                        // Aucun défenseur → vitesse maximale (ratio = RATIO_MAX)
+                        ratio = RATIO_MAX;
                     }
 
-                    // Bornage pour garantir 60..240 s
+                    // Bornage
                     if (ratio < RATIO_MIN) ratio = RATIO_MIN;
                     if (ratio > RATIO_MAX) ratio = RATIO_MAX;
 
-                    // Gain de points de cette seconde
-                    double gainPerSecond = BASE_RATE * roundGainMultiplier * ratio;
+                    // === 3) Gain final ===
+                    double gainPerSecond =
+                            BASE_RATE * roundGainMultiplier * ratio;
+
                     pointsAttackers += gainPerSecond;
+
+                    // === 4) LOGS ===
+                    Bukkit.getLogger().info(
+                            "[War " + war.getId() + "] "
+                                    + "A=" + aNow + " D=" + dNow
+                                    + " | effA=" + String.format("%.2f", effA)
+                                    + " effD=" + String.format("%.2f", effD)
+                                    + " | ratio=" + String.format("%.2f", ratio)
+                                    + " | gain=" + String.format("%.2f", gainPerSecond)
+                    );
                 }
             }
 
+
+            // --- affichage UI inchangé ---
             int attackersCount = countOnline(war.getAttackerPlayers());
             int defendersCount = countOnline(war.getDefenderPlayers());
 
             for (var entry : ui.entrySet()) {
                 UUID id = entry.getKey();
-                Player p = org.bukkit.Bukkit.getPlayer(id);
+                Player p = Bukkit.getPlayer(id);
                 if (p == null) continue;
 
                 boolean isAttacker = war.getAttackerPlayers().contains(id);
-                int allies  = isAttacker ? attackersCount : defendersCount;
+                int allies = isAttacker ? attackersCount : defendersCount;
                 int enemies = isAttacker ? defendersCount : attackersCount;
 
                 KDA k = kdas.getOrDefault(id, new KDA());
@@ -474,6 +505,7 @@ public final class WarRuntime {
                 );
             }
         }
+
 
         private int attackersInClaimNow() {
             if (attackedClaim == null) return 0;

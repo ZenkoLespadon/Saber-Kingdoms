@@ -3,8 +3,15 @@ package com.kingdomspvp.kingdoms.utils;
 import com.gamingmesh.jobs.Jobs;
 import com.gamingmesh.jobs.container.JobProgression;
 import com.gamingmesh.jobs.container.JobsPlayer;
+import com.kingdomspvp.kingdoms.model.Claim;
+import com.kingdomspvp.kingdoms.model.War;
+import com.kingdomspvp.kingdoms.services.ClaimManager;
 import me.clip.placeholderapi.PlaceholderAPI;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+
+import java.util.Collection;
+import java.util.UUID;
 
 public class PowerCalculator {
 
@@ -22,7 +29,7 @@ public class PowerCalculator {
         int kills = parse(killsStr);
         int deaths = parse(deathsStr);
 
-        double score = (kills * 3.0) - (deaths * 1.5);
+        double score = (kills * 10.0) - (deaths * 1.5);
         if (score < 0) score = 0;
 
         if (score > 50) score = 50;
@@ -40,7 +47,7 @@ public class PowerCalculator {
             totalLevels += prog.getLevel();
         }
 
-        double power = totalLevels / 2.0;
+        double power = totalLevels * 5.0;
 
         return (int) Math.min(50, power);
     }
@@ -52,4 +59,21 @@ public class PowerCalculator {
             return 0;
         }
     }
+
+    public static double effectivePower(Collection<Integer> powers) {
+        if (powers == null || powers.isEmpty()) return 0.0;
+
+        double a = 1.3;
+        double sum = 0.0;
+
+        for (int p : powers) {
+            if (p < 0) p = 0;
+            sum += Math.pow(p, a);
+        }
+
+        return Math.pow(sum, 1.0 / a);
+    }
+
+
+
 }
