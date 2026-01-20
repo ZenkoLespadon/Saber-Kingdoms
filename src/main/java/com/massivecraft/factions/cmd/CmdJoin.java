@@ -1,5 +1,7 @@
 package com.massivecraft.factions.cmd;
 
+import com.kingdomspvp.kingdoms.model.Kingdom;
+import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.massivecraft.factions.*;
 import com.massivecraft.factions.cmd.roster.struct.RosterPlayer;
 import com.massivecraft.factions.cmd.roster.struct.RosterPlayerManager;
@@ -8,6 +10,7 @@ import com.massivecraft.factions.struct.Permission;
 import com.massivecraft.factions.util.Logger;
 import com.massivecraft.factions.zcore.util.TL;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 
 import java.util.Comparator;
 import java.util.Optional;
@@ -57,8 +60,18 @@ public class CmdJoin extends FCommand {
                 return;
             }
 
-            if (fplayer.hasFaction()) {
-                context.msg(TL.COMMAND_JOIN_INOTHERFACTION, fplayer.describeTo(context.fPlayer, true), samePlayer ? "your" : "their");
+            Kingdom kingdom = KingdomsManager.getKingdomOfPlayer(fplayer.getPlayer());
+
+            if (kingdom == null) {
+                context.msg(ChatColor.RED + "Vous devez d’abord rejoindre un royaume.");
+                return;
+            }
+
+            boolean inDefault = KingdomsManager.playerInDefaultFaction(fplayer.getPlayer(), kingdom);
+
+            if (!inDefault) {
+                // Le joueur est dans une faction ≠ faction par défaut → refus
+                context.msg(ChatColor.RED + "Vous devez être dans la faction par défaut de votre royaume pour rejoindre une faction.");
                 return;
             }
 
@@ -90,47 +103,6 @@ public class CmdJoin extends FCommand {
             if (!context.fPlayer.isAdminBypassing() && faction.isBanned(context.fPlayer)) {
                 context.msg(TL.COMMAND_JOIN_BANNED, faction.getTag(context.fPlayer));
                 return;
-            }
-
-            if (useRoster) {
-                RosterPlayer rosterPlayer = RosterPlayerManager.getRosterPlayerFromUUID(context.player.getUniqueId(), faction);
-                if (rosterPlayer == null) {
-                    fplayer.msg(TL.COMMAND_JOIN_NOT_IN_ROSTER);
-                    return;
-                }
-
-                if (rosterPlayer.isOnJoinCooldown()) {
-                    fplayer.msg(TL.COMMAND_JOIN_ROSTER_JOIN_COOLDOWN);
-                    return;
-                }
-
-                int limit = getFactionMemberLimit(faction);
-
-                if (faction.getOnlinePlayers().size() == limit) {
-                    fplayer.msg(TL.COMMAND_JOIN_ROSTER_JOIN_NO_ROOM_ONLINE);
-                    return;
-                }
-
-                if (FactionsPlugin.getInstance().getFileManager().getRoster().fetchBoolean("rotate-offline-players")) {
-                    if (faction.getOnlinePlayers().size() != limit) {
-                        if (faction.getSize() == limit) {
-                            Optional<FPlayer> foundSwap = faction.getFPlayers().stream()
-                                    .filter(fPlayer -> !fPlayer.getPlayer().isOnline())
-                                    .min(Comparator.comparingLong(FPlayer::getLastLogoutTime));
-                            if (foundSwap.isPresent()) {
-                                foundSwap.get().resetFactionData();
-                            } else {
-                                fplayer.msg(TL.COMMAND_JOIN_ROSTER_JOIN_NO_REPLACEMENT_FOUND);
-                                return;
-                            }
-                        }
-                    }
-                } else {
-                    fplayer.msg(TL.COMMAND_JOIN_ROSTER_JOIN_NO_ROOM_FULL);
-                    return;
-                }
-
-                rosterPlayer.setLastJoinTime(System.currentTimeMillis());
             }
 
             FactionsPlugin.getInstance().getServer().getScheduler().scheduleSyncDelayedTask(FactionsPlugin.getInstance(), () -> {
