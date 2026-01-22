@@ -11,7 +11,9 @@ public final class PlayerUtil {
     private PlayerUtil() {}
 
     public static boolean isInOverworld(Player player) {
-        return player.getWorld().getEnvironment() == org.bukkit.World.Environment.NORMAL;
+        boolean inOverworld = player.getWorld().getEnvironment() == org.bukkit.World.Environment.NORMAL;
+
+        return inOverworld;
     }
 
     public static boolean isFacLeaderWithMinMembers(FPlayer fplayer, Player sender) {

@@ -2,6 +2,7 @@
 package com.kingdomspvp.kingdoms.commands;
 
 import com.kingdomspvp.kingdoms.utils.ClaimVisualization;
+import com.kingdomspvp.kingdoms.utils.PlayerUtil;
 import com.kingdomspvp.kingdoms.utils.data.SettingsProvider;
 import com.massivecraft.factions.FactionsPlugin;
 import org.bukkit.Bukkit;
@@ -59,6 +60,11 @@ public class ClaimsVizCommand extends KingdomCommand {
 
         if (context.player == null) {
             context.msg(ChatColor.RED + "Uniquement en jeu.");
+            return;
+        }
+
+        if (!PlayerUtil.isInOverworld(context.player)) {
+            context.player.sendMessage(ChatColor.RED + "Cette commande ne peut être exécutée que dans l'Overworld.");
             return;
         }
 

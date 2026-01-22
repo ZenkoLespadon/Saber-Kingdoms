@@ -36,6 +36,11 @@ public class ClaimCommand extends KingdomCommand {
             return;
         }
 
+        if (!PlayerUtil.isInOverworld(context.player)) {
+            context.player.sendMessage(ChatColor.RED + "Cette commande ne peut être exécutée que dans l'Overworld.");
+            return;
+        }
+
         FPlayer fPlayer = FPlayers.getInstance().getByPlayer(context.player);
 
         if (fPlayer == null || fPlayer.getFaction() == null || fPlayer.getFaction().isWilderness()) {

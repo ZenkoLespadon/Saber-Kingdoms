@@ -1,6 +1,7 @@
 package com.kingdomspvp.kingdoms.commands;
 
 import com.kingdomspvp.kingdoms.services.WarRuntime;
+import com.kingdomspvp.kingdoms.utils.PlayerUtil;
 import org.bukkit.ChatColor;
 
 import java.util.Arrays;
@@ -17,6 +18,11 @@ public class TpToWarHiddenCommand extends KingdomCommand {
     @Override
     public void perform(KingdomCommandContext context) {
         if (context.player == null) return;
+
+        if (!PlayerUtil.isInOverworld(context.player)) {
+            context.player.sendMessage(ChatColor.RED + "Vous devez être dans l'Overworld pour rejoindre une guerre.");
+            return;
+        }
 
         if (context.args.isEmpty()) {
             context.msg(ChatColor.RED + "ID de guerre manquant.");
