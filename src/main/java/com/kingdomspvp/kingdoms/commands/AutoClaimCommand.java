@@ -2,6 +2,7 @@
 package com.kingdomspvp.kingdoms.commands;
 
 import com.kingdomspvp.kingdoms.services.AutoClaimManager;
+import com.kingdomspvp.kingdoms.utils.PlayerUtil;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.Faction;
 import com.massivecraft.factions.FactionsPlugin;
@@ -31,17 +32,7 @@ public class AutoClaimCommand extends KingdomCommand {
             return;
         }
 
-        Faction playerFaction = fp.getFaction();
-
-        if (!fp.getRole().isAtLeast(Role.COLEADER)) {
-            context.msg(ChatColor.RED + "Seul le chef de faction peut utiliser cette commande.");
-            return;
-        }
-
-
-        if (playerFaction.getFPlayers().size() < MIN_FACTION_MEMBERS) {
-            context.msg(ChatColor.RED + "Votre faction doit avoir au moins "
-                    + MIN_FACTION_MEMBERS + " membres pour utiliser cette commande.");
+        if (!PlayerUtil.isFacLeaderWithMinMembers(fp, context.player)) {
             return;
         }
 

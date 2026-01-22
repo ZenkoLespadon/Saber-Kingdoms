@@ -4,6 +4,7 @@ import com.kingdomspvp.kingdoms.model.Claim;
 import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
+import com.kingdomspvp.kingdoms.utils.PlayerUtil;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.struct.Role;
@@ -42,15 +43,7 @@ public class ClaimCommand extends KingdomCommand {
             return;
         }
 
-        if (!fPlayer.getRole().isAtLeast(Role.COLEADER)) {
-            context.msg(ChatColor.RED + "Seul le chef de faction peut utiliser cette commande.");
-            return;
-        }
-
-
-        if (fPlayer.getFaction().getFPlayers().size() < MIN_FACTION_MEMBERS) {
-            context.msg(ChatColor.RED + "Votre faction doit avoir au moins "
-                    + MIN_FACTION_MEMBERS + " membres pour claim.");
+        if (!PlayerUtil.isFacLeaderWithMinMembers(fPlayer, context.player)) {
             return;
         }
 

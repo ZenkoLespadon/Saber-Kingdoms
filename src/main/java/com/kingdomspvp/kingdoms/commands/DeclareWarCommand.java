@@ -8,6 +8,7 @@ import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
 import com.kingdomspvp.kingdoms.utils.ChatUtil;
+import com.kingdomspvp.kingdoms.utils.PlayerUtil;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.Faction;
@@ -54,21 +55,11 @@ public class DeclareWarCommand extends KingdomCommand {
             return;
         }
 
-
-
-        if (!fp.getRole().isAtLeast(Role.COLEADER)) {
-            context.msg(ChatColor.RED + "Seul le chef de faction peut utiliser cette commande.");
+        if (!PlayerUtil.isFacLeaderWithMinMembers(fp, context.player)) {
             return;
         }
 
         Faction playerFaction = fp.getFaction();
-
-        if (playerFaction.getFPlayers().size() < MIN_FACTION_MEMBERS) {
-            ChatUtil.sendWarMsg(context.player,
-                    ChatColor.RED + "Votre faction doit avoir au moins "
-                            + MIN_FACTION_MEMBERS + " membres pour déclarer une guerre.");
-            return;
-        }
 
         Kingdom attacker = KingdomsManager.getKingdomByFactionName(playerFaction.getTag());
         if (attacker == null) {
