@@ -29,7 +29,7 @@ public class PowerCalculator {
         int kills = parse(killsStr);
         int deaths = parse(deathsStr);
 
-        double score = (kills * 10.0) - (deaths * 1.5);
+        double score = (kills * 5.0) - (deaths * 1.5);
         if (score < 0) score = 0;
 
         if (score > 50) score = 50;
@@ -47,7 +47,7 @@ public class PowerCalculator {
             totalLevels += prog.getLevel();
         }
 
-        double power = totalLevels * 5.0;
+        double power = totalLevels * 2.5;
 
         return (int) Math.min(50, power);
     }
