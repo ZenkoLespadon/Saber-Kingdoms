@@ -6,12 +6,14 @@ import com.kingdomspvp.kingdoms.services.ClaimManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
+import com.massivecraft.factions.struct.Role;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 
 import java.util.Arrays;
 
 import static com.kingdomspvp.kingdoms.services.ClaimManager.isCornerClaim;
+import static com.kingdomspvp.kingdoms.services.KingdomsManager.MIN_FACTION_MEMBERS;
 
 public class ClaimCommand extends KingdomCommand {
 
@@ -34,8 +36,21 @@ public class ClaimCommand extends KingdomCommand {
         }
 
         FPlayer fPlayer = FPlayers.getInstance().getByPlayer(context.player);
+
         if (fPlayer == null || fPlayer.getFaction() == null || fPlayer.getFaction().isWilderness()) {
             context.msg(ChatColor.RED + "Vous devez être dans un royaume pour claim.");
+            return;
+        }
+
+        if (!fPlayer.getRole().isAtLeast(Role.COLEADER)) {
+            context.msg(ChatColor.RED + "Seul le chef de faction peut utiliser cette commande.");
+            return;
+        }
+
+
+        if (fPlayer.getFaction().getFPlayers().size() < MIN_FACTION_MEMBERS) {
+            context.msg(ChatColor.RED + "Votre faction doit avoir au moins "
+                    + MIN_FACTION_MEMBERS + " membres pour claim.");
             return;
         }
 

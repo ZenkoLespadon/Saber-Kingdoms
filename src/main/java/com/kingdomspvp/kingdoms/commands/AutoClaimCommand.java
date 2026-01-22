@@ -2,10 +2,15 @@
 package com.kingdomspvp.kingdoms.commands;
 
 import com.kingdomspvp.kingdoms.services.AutoClaimManager;
+import com.massivecraft.factions.FPlayer;
+import com.massivecraft.factions.Faction;
 import com.massivecraft.factions.FactionsPlugin;
+import com.massivecraft.factions.struct.Role;
 import org.bukkit.ChatColor;
 
 import java.util.Arrays;
+
+import static com.kingdomspvp.kingdoms.services.KingdomsManager.MIN_FACTION_MEMBERS;
 
 public class AutoClaimCommand extends KingdomCommand {
 
@@ -19,7 +24,26 @@ public class AutoClaimCommand extends KingdomCommand {
     @Override
     public void perform(KingdomCommandContext context) {
         if (context.player == null) { context.msg(ChatColor.RED + "Joueur uniquement."); return; }
-        if (!context.player.hasPermission("kingdoms.autoclaim")) { context.msg(ChatColor.RED + "Permission manquante."); return; }
+
+        FPlayer fp = com.massivecraft.factions.FPlayers.getInstance().getByPlayer(context.player);
+        if (fp == null || fp.getFaction() == null || fp.getFaction().isWilderness()) {
+            context.msg(ChatColor.RED + "Vous devez être dans une faction.");
+            return;
+        }
+
+        Faction playerFaction = fp.getFaction();
+
+        if (!fp.getRole().isAtLeast(Role.COLEADER)) {
+            context.msg(ChatColor.RED + "Seul le chef de faction peut utiliser cette commande.");
+            return;
+        }
+
+
+        if (playerFaction.getFPlayers().size() < MIN_FACTION_MEMBERS) {
+            context.msg(ChatColor.RED + "Votre faction doit avoir au moins "
+                    + MIN_FACTION_MEMBERS + " membres pour utiliser cette commande.");
+            return;
+        }
 
         boolean newState;
         if (context.args.size() >= 1) {

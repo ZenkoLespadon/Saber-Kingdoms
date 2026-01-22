@@ -14,6 +14,9 @@ import org.bukkit.entity.Player;
 import java.util.List;
 
 public class KingdomsManager {
+
+    public static final int MIN_FACTION_MEMBERS = 1;
+
     private static final KingdomsJSON kingdomsJSON = new KingdomsJSON();
 
 

@@ -11,6 +11,7 @@ import com.kingdomspvp.kingdoms.utils.ChatUtil;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.Faction;
+import com.massivecraft.factions.struct.Role;
 import org.bukkit.ChatColor;
 
 import java.time.LocalDate;
@@ -19,6 +20,8 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
+
+import static com.kingdomspvp.kingdoms.services.KingdomsManager.MIN_FACTION_MEMBERS;
 
 public class DeclareWarCommand extends KingdomCommand {
 
@@ -50,7 +53,23 @@ public class DeclareWarCommand extends KingdomCommand {
             ChatUtil.sendWarMsg(context.player, ChatColor.RED + "Vous devez être dans un royaume pour déclarer la guerre.");
             return;
         }
+
+
+
+        if (!fp.getRole().isAtLeast(Role.COLEADER)) {
+            context.msg(ChatColor.RED + "Seul le chef de faction peut utiliser cette commande.");
+            return;
+        }
+
         Faction playerFaction = fp.getFaction();
+
+        if (playerFaction.getFPlayers().size() < MIN_FACTION_MEMBERS) {
+            ChatUtil.sendWarMsg(context.player,
+                    ChatColor.RED + "Votre faction doit avoir au moins "
+                            + MIN_FACTION_MEMBERS + " membres pour déclarer une guerre.");
+            return;
+        }
+
         Kingdom attacker = KingdomsManager.getKingdomByFactionName(playerFaction.getTag());
         if (attacker == null) {
             ChatUtil.sendWarMsg(context.player, ChatColor.RED + "Votre faction n'appartient à aucun royaume. Merci de signaler ce problème à un staff.");
