@@ -21,7 +21,14 @@ public class SpawnPointCommand extends KingdomCommand {
             context.msg("Commande réservée aux joueurs.");
             return;
         }
+
         Player player = context.player;
+
+        if (!player.hasPermission("kingdoms.admin.spawnpoint")) {
+            context.msg("§cVous n'avez pas la permission d'exécuter cette commande.");
+            return;
+        }
+
         String kingdomName = context.args.get(0);
         Kingdom kingdom = KingdomsManager.getKingdomByName(kingdomName);
         if (kingdom == null) {
