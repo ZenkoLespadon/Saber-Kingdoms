@@ -3,7 +3,6 @@ package com.kingdomspvp.kingdoms.commands;
 import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.services.KPlayerManager;
 import com.kingdomspvp.kingdoms.services.KingdomsManager;
-import com.massivecraft.factions.FactionsPlugin;
 import org.bukkit.ChatColor;
 
 import java.util.Arrays;
@@ -11,16 +10,23 @@ import java.util.List;
 
 public class JoinCommand extends KingdomCommand {
 
-    public JoinCommand(FactionsPlugin plugin) {
+    public JoinCommand() {
         this.aliases = Arrays.asList("join");
         this.requiredArgs = Arrays.asList("kingdom");
-        this.helpShort = ChatColor.GRAY + "Rejoindre un royaume";
+        this.helpShort = ChatColor.GRAY + "Forcer un joueur dans un royaume";
+        this.permission = "kingdoms.admin.join";
     }
+
 
     @Override
     public void perform(KingdomCommandContext context) {
         if (context.player == null) {
             context.msg(ChatColor.GRAY + "Commande réservée aux joueurs.");
+            return;
+        }
+
+        if (!context.player.hasPermission(this.permission)) {
+            context.msg(ChatColor.RED + "Vous n'avez pas la permission.");
             return;
         }
 
