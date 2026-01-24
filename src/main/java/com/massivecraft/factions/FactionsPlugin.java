@@ -64,6 +64,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
 import java.lang.reflect.Modifier;
@@ -283,27 +284,22 @@ public class FactionsPlugin extends MPlugin {
             Bukkit.getLogger().info("[Kingdoms] Server type: " + SERVER_TYPE);
 
 
-            Bukkit.getPluginManager().registerEvents(
-                    new KingdomProtectionListener(), this
-            );
-            Bukkit.getPluginManager().registerEvents(
-                    new WarDeclareWizard(), this
-            );
-            Bukkit.getPluginManager().registerEvents(
-                    new WarJoinAnnounceListener(), this
-            );
-            Bukkit.getPluginManager().registerEvents(
-                    new WarUIReconnectListener(), this
-            );
-            Bukkit.getPluginManager().registerEvents(
-                    new TablistKingdomColors(this, 1200L), this
-            );
-            Bukkit.getPluginManager().registerEvents(
-                    new AutoClaimListener(), this
-            );
-            Bukkit.getPluginManager().registerEvents(
-                    new KingdomChatFormatListener(), this
-            );
+            PluginManager pm = getServer().getPluginManager();
+
+            for (Listener listener : new Listener[] {
+                    new KingdomProtectionListener(),
+                    new WarDeclareWizard(),
+                    new WarJoinAnnounceListener(),
+                    new WarUIReconnectListener(),
+                    new TablistKingdomColors(this, 1200L),
+                    new AutoClaimListener(),
+                    new KingdomChatFormatListener(),
+                    new KingdomNpcProtectionListener(this)
+            }) {
+                pm.registerEvents(listener, this);
+            }
+
+
 
             TablistKingdomColors.refreshAll();
 

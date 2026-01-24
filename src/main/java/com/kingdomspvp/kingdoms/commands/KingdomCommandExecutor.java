@@ -33,7 +33,7 @@ public class KingdomCommandExecutor implements CommandExecutor, TabCompleter {
             }
         };
 
-        this.rootCommand.addSubCommand(new JoinCommand(plugin));
+        this.rootCommand.addSubCommand(new JoinCommand());
         this.rootCommand.addSubCommand(new FlistCommand(plugin));
         this.rootCommand.addSubCommand(new CreateCommand());
         this.rootCommand.addSubCommand(new ListCommand());
@@ -52,6 +52,8 @@ public class KingdomCommandExecutor implements CommandExecutor, TabCompleter {
         this.rootCommand.addSubCommand(new SetKingdomCommand());
         this.rootCommand.addSubCommand(new AutoClaimCommand(plugin));
         this.rootCommand.addSubCommand(new ReloadCommand(plugin));
+        this.rootCommand.addSubCommand(new NpcJoinCommand(plugin));
+
     }
 
     @Override
