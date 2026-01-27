@@ -4,7 +4,9 @@ import com.kingdomspvp.kingdoms.model.Claim;
 import com.kingdomspvp.kingdoms.utils.Callback;
 import com.kingdomspvp.kingdoms.utils.data.ClaimsJSON;
 import com.kingdomspvp.kingdoms.utils.data.KingdomsConfig;
+import com.kingdomspvp.kingdoms.utils.data.SettingsProvider;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 
 import java.util.*;
 
@@ -25,6 +27,13 @@ public class ClaimManager {
     public static int getActiveMapSize() {
         return ACTIVE_MAP_SIZE;
     }
+
+    public static int MAX_CLAIMS_PER_KINGDOM; // limite fixe
+
+    public static void reloadSettings() {
+        MAX_CLAIMS_PER_KINGDOM = SettingsProvider.get().limits().maxClaimsPerKingdom();
+    }
+
 
     /* ===================== */
     /* ====== LOAD ========= */
@@ -184,12 +193,38 @@ public class ClaimManager {
 
     public static void transferClaimToKingdom(Claim claim, String kingdomName, String factionTag) {
         if (CLAIMS_LOCKED || claim == null || kingdomName == null) return;
+
+        int count = getClaimsByKingdomName(kingdomName).size();
+        if (count >= MAX_CLAIMS_PER_KINGDOM) {
+
+            Bukkit.getOnlinePlayers().forEach(p -> {
+                if (!AutoClaimManager.isEnabled(p.getUniqueId())) return;
+
+                var fp = com.massivecraft.factions.FPlayers.getInstance().getByPlayer(p);
+                if (fp == null || fp.getFaction() == null) return;
+
+                var k = com.kingdomspvp.kingdoms.services.KingdomsManager
+                        .getKingdomByFactionName(fp.getFaction().getTag());
+
+                if (k != null && kingdomName.equalsIgnoreCase(k.getName())) {
+                    AutoClaimManager.disable(p.getUniqueId());
+                    p.sendMessage(ChatColor.RED + "Votre royaume a atteint la limite de "
+                            + MAX_CLAIMS_PER_KINGDOM + " claims. L'autoclaim a été désactivé.");
+                }
+            });
+
+            Bukkit.getLogger().warning("[Kingdoms] " + kingdomName
+                    + " a atteint la limite de " + MAX_CLAIMS_PER_KINGDOM + " claims.");
+            return;
+        }
+
         claim.setKingdomName(kingdomName);
         if (factionTag != null && !factionTag.isEmpty()) {
             claim.setFactionName(factionTag);
         }
         addClaim(claim);
     }
+
 
     public static void transferClaimToKingdom(Claim claim, String kingdomName) {
         transferClaimToKingdom(claim, kingdomName, "Paysans_" + kingdomName);

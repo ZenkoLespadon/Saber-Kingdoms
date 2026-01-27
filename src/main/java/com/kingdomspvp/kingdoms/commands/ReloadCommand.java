@@ -4,6 +4,7 @@ package com.kingdomspvp.kingdoms.commands;
 import com.kingdomspvp.kingdoms.listeners.WarBlockEditListener;
 import com.kingdomspvp.kingdoms.listeners.WarDeathListener;
 import com.kingdomspvp.kingdoms.listeners.WarKDAListener;
+import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarRuntime;
 import com.kingdomspvp.kingdoms.utils.*;
 import com.kingdomspvp.kingdoms.services.ClaimManager;
@@ -86,6 +87,9 @@ public class ReloadCommand extends KingdomCommand {
         WarDeathListener.reloadSettings();
         ClaimVisualization.reloadSettings();
         //ClaimsVizCommand se reload dans le perform()
+        ClaimManager.reloadSettings();
+        KingdomsManager.reloadSettings();
+
 
         // 6) Feedback admin
         context.msg(ChatColor.GREEN + "[SaberKingdoms] Reload "

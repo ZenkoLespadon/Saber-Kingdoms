@@ -17,6 +17,12 @@ public final class KingdomsConfigLoader {
         int mapSize = cfg.getInt("claims.map-size");
         int claimSize = cfg.getInt("claims.claim-size");
 
+        var limits = new KingdomsSettings.Limits(
+                cfg.getInt("limits.max-claims-per-kingdom"),
+                cfg.getInt("limits.min-faction-members")
+        );
+
+
         var particles = new KingdomsSettings.Visualization.Particles(
                 (float) cfg.getDouble("visualization.particles.dust-size"),
                 cfg.getInt("visualization.particles.step"),
@@ -91,7 +97,8 @@ public final class KingdomsConfigLoader {
         return new KingdomsSettings(
                 serverType,
                 new KingdomsSettings.Claims(mapSize, claimSize),
-                viz, commands, war, blocks, death
+                viz, commands, war, blocks, death, limits
         );
+
     }
 }

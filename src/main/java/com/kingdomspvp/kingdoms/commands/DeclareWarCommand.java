@@ -12,7 +12,6 @@ import com.kingdomspvp.kingdoms.utils.PlayerUtil;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.Faction;
-import com.massivecraft.factions.struct.Role;
 import org.bukkit.ChatColor;
 
 import java.time.LocalDate;
@@ -21,8 +20,6 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
-
-import static com.kingdomspvp.kingdoms.services.KingdomsManager.MIN_FACTION_MEMBERS;
 
 public class DeclareWarCommand extends KingdomCommand {
 
@@ -55,15 +52,16 @@ public class DeclareWarCommand extends KingdomCommand {
             return;
         }
 
-        if (!PlayerUtil.isFacLeaderWithMinMembers(fp, context.player)) {
-            return;
-        }
-
         Faction playerFaction = fp.getFaction();
 
         Kingdom attacker = KingdomsManager.getKingdomByFactionName(playerFaction.getTag());
+
         if (attacker == null) {
             ChatUtil.sendWarMsg(context.player, ChatColor.RED + "Votre faction n'appartient à aucun royaume. Merci de signaler ce problème à un staff.");
+            return;
+        }
+
+        if (!PlayerUtil.isFacLeaderWithMinMembers(attacker, fp, context.player)) {
             return;
         }
 

@@ -20,6 +20,11 @@ public final class KingdomsConfig {
     public static int CONFIG_MAP_SIZE;
     public static int CONFIG_CLAIM_SIZE;
 
+    // ===== LIMITES =====
+    public static int MAX_CLAIMS_PER_KINGDOM;
+    public static int MIN_FACTION_MEMBERS;
+
+
     // ===== VISUALIZATION =====
     public static float DUST_SIZE;
     public static int STEP;
@@ -78,6 +83,10 @@ public final class KingdomsConfig {
 
             CONFIG_MAP_SIZE  = requireInt("claims.map-size");
             CONFIG_CLAIM_SIZE = requireInt("claims.claim-size");
+
+            MAX_CLAIMS_PER_KINGDOM = requireInt("limits.max-claims-per-kingdom");
+            MIN_FACTION_MEMBERS = requireInt("limits.min-faction-members");
+
 
             DUST_SIZE = (float) requireDouble("visualization.particles.dust-size");
             STEP = requireInt("visualization.particles.step");
@@ -198,6 +207,16 @@ public final class KingdomsConfig {
                     # Taille d’un claim (en blocs).
                     # Exemple : 64 = chaque claim fait 64x64 blocs.
                     claim-size: 64
+           
+                  # -------------------------
+                  # LIMITES DU SYSTÈME
+                  # -------------------------
+                  limits:
+                    # Nombre maximum de claims par royaume
+                    max-claims-per-kingdom: 32
+                
+                    # Nombre minimum de membres requis pour créer une faction ou utiliser certaines commandes
+                    min-faction-members: 1
         
         
                   # -------------------------
@@ -243,6 +262,7 @@ public final class KingdomsConfig {
         
                       # Fréquence de rafraîchissement des particules pour cette commande
                       period-ticks: 10
+                
         
         
                   # -------------------------

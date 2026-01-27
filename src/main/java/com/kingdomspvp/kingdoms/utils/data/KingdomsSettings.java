@@ -9,9 +9,12 @@ public record KingdomsSettings(
         Commands commands,
         War war,
         Blocks blocks,
-        Death death
+        Death death,
+        Limits limits
 ) {
     public record Claims(int mapSize, int claimSize) {}
+
+    public record Limits(int maxClaimsPerKingdom, int minFactionMembers) {}
 
     public record Visualization(Particles particles) {
         public record Particles(float dustSize, int step, int countPerSpawn, int periodTicks,

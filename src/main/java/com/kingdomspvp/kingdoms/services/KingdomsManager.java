@@ -4,6 +4,7 @@ import com.kingdomspvp.kingdoms.listeners.TablistKingdomColors;
 import com.kingdomspvp.kingdoms.utils.Callback;
 import com.kingdomspvp.kingdoms.utils.data.KingdomsJSON;
 import com.kingdomspvp.kingdoms.model.Kingdom;
+import com.kingdomspvp.kingdoms.utils.data.SettingsProvider;
 import com.massivecraft.factions.FPlayer;
 import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.Faction;
@@ -15,9 +16,13 @@ import java.util.List;
 
 public class KingdomsManager {
 
-    public static final int MIN_FACTION_MEMBERS = 1;
+    public static int MIN_FACTION_MEMBERS;
 
     private static final KingdomsJSON kingdomsJSON = new KingdomsJSON();
+
+    public static void reloadSettings() {
+        MIN_FACTION_MEMBERS = SettingsProvider.get().limits().minFactionMembers();
+    }
 
 
     // Chargement des royaumes lors de l'initialisation du manager

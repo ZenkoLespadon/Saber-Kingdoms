@@ -356,6 +356,8 @@ public class FactionsPlugin extends MPlugin {
         WarBlockEditListener.reloadSettings();
         WarDeathListener.reloadSettings();
         ClaimVisualization.reloadSettings();
+        ClaimManager.reloadSettings();
+        KingdomsManager.reloadSettings();
     }
 
 
