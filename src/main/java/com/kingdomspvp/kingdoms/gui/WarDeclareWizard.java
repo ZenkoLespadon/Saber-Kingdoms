@@ -148,15 +148,23 @@ public final class WarDeclareWizard implements Listener {
         Inventory inv = Bukkit.createInventory(null, 27, TITLE_MINUTE);
 
         List<Integer> mins = validMinutesFor(s.day, s.hour);
-        if (mins.isEmpty()) { ChatUtil.sendWarMsg(p, ChatColor.RED + "Aucune minute valide pour " + s.hour + "h."); openHourList(p, s); return; }
+        if (mins.isEmpty()) {
+            ChatUtil.sendWarMsg(p, ChatColor.RED + "Aucune minute valide pour " + s.hour + "h.");
+            openHourList(p, s);
+            return;
+        }
 
         List<ItemStack> items = new ArrayList<>();
-        for (int m : mins) items.add(makeItem(Material.MAP, ChatColor.AQUA + fmtHHMM(s.hour, m)));
-        placeCenteredRows(inv, items, 1);
+        for (int m : mins)
+            items.add(makeItem(Material.MAP, ChatColor.AQUA + fmtHHMM(s.hour, m)));
 
-        inv.setItem(9, makeItem(glassRed(), ChatColor.RED + "Annuler"));
+        placeCenteredRows(inv, items, 0);
+
+        inv.setItem(18, makeItem(glassRed(), ChatColor.RED + "Annuler"));
+
         p.openInventory(inv);
     }
+
 
     private static void openChoiceConfirm(Player p, State s, ItemStack choice, String title) {
         Inventory inv = Bukkit.createInventory(null, 27, title);
