@@ -187,6 +187,13 @@ public final class WarRuntime {
         private int secondsLeft;
         private double targetPoints;
 
+        // TODO : A retirer après la beta
+        private final Map<UUID, Integer> presenceTicks = new ConcurrentHashMap<>();
+        private final Map<UUID, Double> contributionTicks = new ConcurrentHashMap<>();
+        private int tickCounter = 0;
+
+
+
 
         private int roundIndex = 1;               // 1..MAX_ROUNDS
         private boolean combatActive = false;     // timer combat (round) actif ?
@@ -400,98 +407,118 @@ public final class WarRuntime {
         }
 
         private void tickScoringAndDisplays() {
+
             if (inDetectionWindow && !combatActive) {
                 for (var entry : ui.entrySet()) {
-                    UUID id = entry.getKey();
-                    Player p = Bukkit.getPlayer(id);
+                    Player p = Bukkit.getPlayer(entry.getKey());
                     if (p == null) continue;
-
-                    entry.getValue().updateDetection(
-                            detectionSecondsLeft,
-                            "Attaquez un claim"
-                    );
+                    entry.getValue().updateDetection(detectionSecondsLeft, "Attaquez un claim");
                 }
                 return;
             }
 
+            // // TODO : A retirer après la beta
+            if (WarManager.isTestMode() && attackedClaim != null) {
+
+                int gx = attackedClaim.getGridX();
+                int gz = attackedClaim.getGridZ();
+
+                // présence
+                for (UUID id : war.getAttackerPlayers()) {
+                    Player p = Bukkit.getPlayer(id);
+                    if (p != null && p.isOnline() && isInGrid(p, gx, gz)) {
+                        presenceTicks.merge(id, 1, Integer::sum);
+                    }
+                }
+                for (UUID id : war.getDefenderPlayers()) {
+                    Player p = Bukkit.getPlayer(id);
+                    if (p != null && p.isOnline() && isInGrid(p, gx, gz)) {
+                        presenceTicks.merge(id, 1, Integer::sum);
+                    }
+                }
+            }
+
+            // === SCORING NORMAL (inchangé) ===
             if (attackedClaim != null) {
 
                 int gx = attackedClaim.getGridX();
                 int gz = attackedClaim.getGridZ();
 
-                // Listes des powers des joueurs présents dans le claim
                 List<Integer> atkPowers = new ArrayList<>();
                 List<Integer> defPowers = new ArrayList<>();
+
+                List<UUID> atkPresent = new ArrayList<>();
+                List<UUID> defPresent = new ArrayList<>();
 
                 for (UUID id : war.getAttackerPlayers()) {
                     Player p = Bukkit.getPlayer(id);
                     if (p != null && p.isOnline() && isInGrid(p, gx, gz)) {
+                        atkPresent.add(id);
                         atkPowers.add(war.getPlayerPower(id));
                     }
                 }
-
                 for (UUID id : war.getDefenderPlayers()) {
                     Player p = Bukkit.getPlayer(id);
                     if (p != null && p.isOnline() && isInGrid(p, gx, gz)) {
+                        defPresent.add(id);
                         defPowers.add(war.getPlayerPower(id));
                     }
                 }
 
-                int aNow = atkPowers.size();
-                int dNow = defPowers.size();
+                int aNow = atkPresent.size();
+                int dNow = defPresent.size();
 
                 if (aNow > 0) {
 
-                    // === 1) Calcul puissance effective des deux groupes ===
                     double effA = PowerCalculator.effectivePower(atkPowers);
                     double effD = PowerCalculator.effectivePower(defPowers);
 
-                    // === 2) Ratio basé sur la puissance effective ===
-                    double ratio;
-                    if (effD > 0) {
-                        ratio = effA / effD;
-                    } else {
-                        // Aucun défenseur → vitesse maximale (ratio = RATIO_MAX)
-                        ratio = RATIO_MAX;
-                    }
-
-                    // Bornage
+                    double ratio = (effD > 0 ? effA / effD : RATIO_MAX);
                     if (ratio < RATIO_MIN) ratio = RATIO_MIN;
                     if (ratio > RATIO_MAX) ratio = RATIO_MAX;
 
-                    // === 3) Gain final ===
-                    double gainPerSecond =
-                            BASE_RATE * roundGainMultiplier * ratio;
-
+                    double gainPerSecond = BASE_RATE * roundGainMultiplier * ratio;
                     pointsAttackers += gainPerSecond;
 
-                    // === 4) LOGS ===
-                    Bukkit.getLogger().info(
-                            "[War " + war.getId() + "] "
-                                    + "A=" + aNow + " D=" + dNow
-                                    + " | effA=" + String.format("%.2f", effA)
-                                    + " effD=" + String.format("%.2f", effD)
-                                    + " | ratio=" + String.format("%.2f", ratio)
-                                    + " | gain=" + String.format("%.2f", gainPerSecond)
-                    );
+                    // TODO : A retirer après la beta
+                    if (WarManager.isTestMode()) {
+
+                        double totalAtkPower = atkPowers.stream().mapToDouble(i -> i).sum();
+                        if (totalAtkPower > 0) {
+                            for (UUID id : atkPresent) {
+                                double pwr = war.getPlayerPower(id);
+                                double share = (pwr / totalAtkPower) * gainPerSecond;
+                                contributionTicks.merge(id, share, Double::sum);
+                            }
+                        }
+                    }
                 }
             }
 
+            // TODO : A retirer après la beta
+            if (WarManager.isTestMode()) {
+                tickCounter++;
+                if (tickCounter >= 10 && attackedClaim != null) {
+                    logContributions10s(attackedClaim);
+                    tickCounter = 0;
+                    presenceTicks.clear();
+                    contributionTicks.clear();
+                }
+            }
 
-            // --- affichage UI inchangé ---
+            // === UI inchangé ===
             int attackersCount = countOnline(war.getAttackerPlayers());
             int defendersCount = countOnline(war.getDefenderPlayers());
 
             for (var entry : ui.entrySet()) {
-                UUID id = entry.getKey();
-                Player p = Bukkit.getPlayer(id);
+                Player p = Bukkit.getPlayer(entry.getKey());
                 if (p == null) continue;
 
-                boolean isAttacker = war.getAttackerPlayers().contains(id);
+                boolean isAttacker = war.getAttackerPlayers().contains(entry.getKey());
                 int allies = isAttacker ? attackersCount : defendersCount;
                 int enemies = isAttacker ? defendersCount : attackersCount;
 
-                KDA k = kdas.getOrDefault(id, new KDA());
+                KDA k = kdas.getOrDefault(entry.getKey(), new KDA());
                 String kdaStr = k.k + "/" + k.d + "/" + k.a;
 
                 entry.getValue().update(
@@ -505,6 +532,41 @@ public final class WarRuntime {
                 );
             }
         }
+
+
+        // TODO : A retirer après la beta
+        private void logContributions10s(Claim c) {
+            if (!WarManager.isTestMode()) return;
+
+            Bukkit.getLogger().info("=== WAR " + war.getId() + " — Contributions 10s ===");
+            Bukkit.getLogger().info("Claim (" + c.getGridX() + "," + c.getGridZ() + ")");
+
+            for (UUID id : war.getAttackerPlayers()) logContributionLine(id, "ATK");
+            for (UUID id : war.getDefenderPlayers()) logContributionLine(id, "DEF");
+
+            Bukkit.getLogger().info("==========================================");
+        }
+
+        private void logContributionLine(UUID id, String side) {
+
+            int ticks = presenceTicks.getOrDefault(id, 0);
+            double presence = (ticks / 10.0) * 100.0;
+
+            double gained = contributionTicks.getOrDefault(id, 0.0);
+            int pow = war.getPlayerPower(id);
+
+            Player p = Bukkit.getPlayer(id);
+            String name = (p != null ? p.getName() : id.toString().substring(0,8));
+
+            Bukkit.getLogger().info(
+                    side + " " + name
+                            + " | Power=" + pow
+                            + " | +Pts=" + String.format("%.2f", gained)
+                            + " | Présence=" + String.format("%.0f%%", presence)
+            );
+        }
+
+
 
 
         private int attackersInClaimNow() {

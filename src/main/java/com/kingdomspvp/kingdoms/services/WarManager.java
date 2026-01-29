@@ -332,6 +332,30 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
 
         WarRuntime.begin(w);
 
+        // TODO : A retirer après la beta
+        if (WarManager.isTestMode()) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(ChatUtil.prefixWithWar(ChatColor.GOLD + "Powers des participants :\n"));
+
+            for (UUID id : w.getAttackerPlayers()) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null)
+                    sb.append(ChatColor.RED).append("ATK ").append(p.getName())
+                            .append(ChatColor.GRAY).append(" : ")
+                            .append(ChatColor.GREEN).append(w.getPlayerPower(id)).append("\n");
+            }
+            for (UUID id : w.getDefenderPlayers()) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null)
+                    sb.append(ChatColor.BLUE).append("DEF ").append(p.getName())
+                            .append(ChatColor.GRAY).append(" : ")
+                            .append(ChatColor.GREEN).append(w.getPlayerPower(id)).append("\n");
+            }
+            sendToRegisteredPlayers(w, TextComponent.fromLegacyText(sb.toString()));
+        }
+
+
+
         // ➜ NOTIF SIMPLE, EXACTEMENT AU DÉPART DE LA GUERRE
         notifyUnregisteredAtWarStart(w);
     }
@@ -412,46 +436,60 @@ c'est le pack de texture de Xeres qui faisait qu'il ne voyait pas les particules
         if (war.getStatus() == WarStatus.ENDED) return false;
 
         Kingdom k = KingdomsManager.getKingdomOfPlayer(player);
-
         if (k == null) return false;
         if (!k.equals(war.getAttackerKingdom()) && !k.equals(war.getDefenderKingdom())) return false;
 
-        boolean added = war.addParticipant(player.getUniqueId(), k);
-        if (added) {
-            warsJSON.addWar(war);
+        // --- power assigné AVANT l’annonce ---
+        int pow;
 
-            int attackers = war.getAttackerPlayers().size();
-            int defenders = war.getDefenderPlayers().size();
-            boolean isAttacker = k.equals(war.getAttackerKingdom());
-
-            String who = isAttacker ? "Un attaquant" : "Un défenseur";
-            org.bukkit.ChatColor atkColor = war.getAttackerKingdom().getColor();
-            org.bukkit.ChatColor defColor = war.getDefenderKingdom().getColor();
-
-            String joinMessage =
-                    org.bukkit.ChatColor.GOLD + who + " a rejoint la guerre, "
-                            + atkColor + attackers + org.bukkit.ChatColor.GOLD + " attaquants contre "
-                            + defColor + defenders + org.bukkit.ChatColor.GOLD + " défenseurs.";
-
-            joinMessage = ChatUtil.prefixWithWar(joinMessage);
-            sendToRegisteredPlayers(war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(joinMessage));
-
-            if (war.getStatus() == WarStatus.INPROGRESS) {
-                if (war.hasCombatStarted()) {
-                    player.spigot().sendMessage(buildTpToWarNowMessage(war.getId()));
-                } else {
-                    player.spigot().sendMessage(buildWaitForAttackMessage(war.getDefenderKingdom()));
-                }
-            }
+        // TODO : À retirer après la beta
+        if (WarManager.isTestMode()) {
+            pow = 20 + new java.util.Random().nextInt(61); // 20–80
+        } else {
+            pow = PowerCalculator.compute(player);
         }
-
-        int pow = PowerCalculator.compute(player);
         war.setPlayerPower(player.getUniqueId(), pow);
 
-        Bukkit.getLogger().info("[War] " + player.getName() + " inscrit en cours de guerre avec power = " + pow);
+        boolean added = war.addParticipant(player.getUniqueId(), k);
+        if (!added) return false;
 
-        return added;
+        warsJSON.addWar(war);
+
+        int attackers = war.getAttackerPlayers().size();
+        int defenders = war.getDefenderPlayers().size();
+        boolean isAttacker = k.equals(war.getAttackerKingdom());
+
+        String who = isAttacker ? "Un attaquant" : "Un défenseur";
+        ChatColor atkColor = war.getAttackerKingdom().getColor().asBungee();
+        ChatColor defColor = war.getDefenderKingdom().getColor().asBungee();
+
+        String joinMessage =
+                ChatColor.GOLD + who + " a rejoint la guerre, "
+                        + atkColor + attackers + ChatColor.GOLD + " attaquants contre "
+                        + defColor + defenders + ChatColor.GOLD + " défenseurs.";
+        joinMessage = ChatUtil.prefixWithWar(joinMessage);
+
+        sendToRegisteredPlayers(war, TextComponent.fromLegacyText(joinMessage));
+
+        // TODO : À retirer après la beta
+        if (WarManager.isTestMode()) {
+            String msg = ChatUtil.prefixWithWar(
+                    ChatColor.AQUA + "Power test de " + ChatColor.WHITE + player.getName()
+                            + ChatColor.GRAY + " : " + ChatColor.GREEN + pow
+            );
+            sendToRegisteredPlayers(war, TextComponent.fromLegacyText(msg));
+        }
+
+        // TP messages
+        if (war.getStatus() == WarStatus.INPROGRESS) {
+            if (war.hasCombatStarted()) player.spigot().sendMessage(buildTpToWarNowMessage(war.getId()));
+            else player.spigot().sendMessage(buildWaitForAttackMessage(war.getDefenderKingdom()));
+        }
+
+        Bukkit.getLogger().info("[War] " + player.getName() + " inscrit avec power=" + pow);
+        return true;
     }
+
 
     // ------------------------------------------------------------------------
     // Messages
