@@ -31,7 +31,7 @@ public class ReloadCommand extends KingdomCommand {
         this.optionalArgs.put("hard", "");
         this.helpShort = ChatColor.GRAY + "Recharge la config (hard = régénère les claims)";
 
-        this.permission = "kingdoms.admin"; // adapte si besoin
+        this.permission = "kingdoms.admin.reload";
     }
 
     @Override

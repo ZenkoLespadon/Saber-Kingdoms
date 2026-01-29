@@ -36,7 +36,6 @@ public class ClaimsVizCommand extends KingdomCommand {
         this.requiredArgs = Collections.emptyList();
         this.helpShort = ChatColor.GRAY + "Trace tous les claims via particules (visible par tous).";
         this.optionalArgs.put("seconds", "");
-        this.permission = "kingdoms.admin.vizclaims";
     }
 
     // =====================================================

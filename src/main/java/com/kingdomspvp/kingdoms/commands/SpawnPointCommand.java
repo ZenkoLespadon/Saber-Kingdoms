@@ -13,6 +13,7 @@ public class SpawnPointCommand extends KingdomCommand {
         this.aliases.add("spawnpoint");
         this.requiredArgs.add("nom_du_royaume");
         this.setHelpShort("Définit le point de respawn de tous les membres du royaume.");
+        this.permission = "kingdoms.admin.spawnpoint";
     }
 
     @Override
@@ -23,11 +24,6 @@ public class SpawnPointCommand extends KingdomCommand {
         }
 
         Player player = context.player;
-
-        if (!player.hasPermission("kingdoms.admin.spawnpoint")) {
-            context.msg("§cVous n'avez pas la permission d'exécuter cette commande.");
-            return;
-        }
 
         String kingdomName = context.args.get(0);
         Kingdom kingdom = KingdomsManager.getKingdomByName(kingdomName);

@@ -4,7 +4,6 @@ package com.kingdomspvp.kingdoms.commands;
 import com.kingdomspvp.kingdoms.model.Kingdom;
 import com.kingdomspvp.kingdoms.model.War;
 import com.kingdomspvp.kingdoms.model.WarStatus;
-import com.kingdomspvp.kingdoms.services.KingdomsManager;
 import com.kingdomspvp.kingdoms.services.WarManager;
 import com.kingdomspvp.kingdoms.services.WarRuntime;
 import com.kingdomspvp.kingdoms.utils.ChatUtil;
