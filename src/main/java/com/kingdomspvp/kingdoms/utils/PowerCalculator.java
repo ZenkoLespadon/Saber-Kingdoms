@@ -3,23 +3,15 @@ package com.kingdomspvp.kingdoms.utils;
 import com.gamingmesh.jobs.Jobs;
 import com.gamingmesh.jobs.container.JobProgression;
 import com.gamingmesh.jobs.container.JobsPlayer;
-import com.kingdomspvp.kingdoms.model.Claim;
-import com.kingdomspvp.kingdoms.model.War;
-import com.kingdomspvp.kingdoms.services.ClaimManager;
 import me.clip.placeholderapi.PlaceholderAPI;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-
-import java.util.Collection;
-import java.util.UUID;
 
 public class PowerCalculator {
 
     public static int compute(Player p) {
-        int kda = computeKDA(p);       // max 50 pts
-        int jobs = computeJobs(p);     // max 50 pts (implémentation plus tard)
-
-        return kda + jobs;             // /100 total
+        int kda = computeKDA(p);   // max 50
+        int jobs = computeJobs(p); // max 50
+        return Math.min(100, kda + jobs);
     }
 
     public static int computeKDA(Player p) {
@@ -29,9 +21,8 @@ public class PowerCalculator {
         int kills = parse(killsStr);
         int deaths = parse(deathsStr);
 
-        double score = (kills * 5.0) - (deaths * 1.5);
+        double score = 25 + (kills * 2.5) - (deaths * 1.5);
         if (score < 0) score = 0;
-
         if (score > 50) score = 50;
 
         return (int) score;
@@ -41,15 +32,16 @@ public class PowerCalculator {
         JobsPlayer jp = Jobs.getPlayerManager().getJobsPlayer(p);
         if (jp == null) return 0;
 
-        int totalLevels = 0;
+        double totalPower = 0;
 
         for (JobProgression prog : jp.getJobProgression()) {
-            totalLevels += prog.getLevel();
+            int lvl = prog.getLevel();
+            double jobPower = Math.pow(Math.min(lvl, 15) / 15.0, 2.0) * 50.0;
+            totalPower += jobPower;
         }
 
-        double power = totalLevels * 2.5;
-
-        return (int) Math.min(50, power);
+        if (totalPower > 50) totalPower = 50;
+        return (int) totalPower;
     }
 
     private static int parse(String s) {
@@ -60,7 +52,7 @@ public class PowerCalculator {
         }
     }
 
-    public static double effectivePower(Collection<Integer> powers) {
+    public static double effectivePower(java.util.Collection<Integer> powers) {
         if (powers == null || powers.isEmpty()) return 0.0;
 
         double a = 1.3;
@@ -73,7 +65,4 @@ public class PowerCalculator {
 
         return Math.pow(sum, 1.0 / a);
     }
-
-
-
 }
