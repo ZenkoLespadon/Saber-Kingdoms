@@ -308,7 +308,7 @@ public final class WarRuntime {
 
             // ✔ TRANSFERT DU CLAIM SI LES ATTAQUANTS GAGNENT CE ROUND
             if (attackersWon && attackedClaim != null) {
-                ClaimManager.transferClaimToKingdom(attackedClaim, war.getAttackerKingdom().getName());
+                ClaimManager.transferClaimToKingdom(attackedClaim, true, war.getAttackerKingdom().getName());
             }
 
             // ✔ SI CE N’ÉTAIT PAS LE DERNIER ROUND → PRÉPARATION ROUND SUIVANT
@@ -348,7 +348,75 @@ public final class WarRuntime {
                 if (p != null) WarManager.clearSidebarFor(p);
             }
 
+            // === RECOMPENSES ===
+
+            int playerCount = war.getAttackerPlayers().size() + war.getDefenderPlayers().size();
+            if (playerCount < 1) playerCount = 1;
+
+            // base reward = 1000$/joueur avec réduction légère
+            double baseReward = 1000.0 * playerCount / (1.0 + playerCount * 0.02);
+
+            // top contribution pour normaliser
+            double topContribution = 0.0;
+            for (double v : contributionTicks.values()) {
+                if (v > topContribution) topContribution = v;
+            }
+            if (topContribution <= 0) topContribution = 1.0;
+
+            for (UUID id : war.getAttackerPlayers()) {
+                distributeRewardTo(id, true, baseReward, topContribution);
+            }
+            for (UUID id : war.getDefenderPlayers()) {
+                distributeRewardTo(id, false, baseReward, topContribution);
+            }
+
+
             stop(false); // ✔ coupe ticker + bossbars + UI proprement
+        }
+
+        private void distributeRewardTo(UUID id,
+                                        boolean isAttacker,
+                                        double baseReward,
+                                        double topContribution) {
+
+            Player p = Bukkit.getPlayer(id);
+            if (p == null || !p.isOnline()) return;
+
+            // --- presence / contribution ---
+            double contrib = contributionTicks.getOrDefault(id, 0.0);
+            double presenceScore = contrib / topContribution;
+            if (presenceScore < 0) presenceScore = 0;
+            if (presenceScore > 1) presenceScore = 1;
+
+            // --- performance round ---
+            double roundPerf;
+            if (isAttacker) {
+                roundPerf = (double) (roundIndex - 1) / MAX_ROUNDS;
+            } else {
+                roundPerf = (double) (MAX_ROUNDS - (roundIndex - 1)) / MAX_ROUNDS;
+            }
+            if (roundPerf < 0) roundPerf = 0;
+            if (roundPerf > 1) roundPerf = 1;
+
+            // --- KDA ---
+            KDA k = kdas.getOrDefault(id, new KDA());
+            double kdar = (k.k + k.a * 0.5) / Math.max(1, k.d);
+            double kdaScore = kdar / 5.0;
+            if (kdaScore < 0) kdaScore = 0;
+            if (kdaScore > 1) kdaScore = 1;
+
+            // --- score final ---
+            double finalScore =
+                    presenceScore * 0.30 +
+                            roundPerf     * 0.30 +
+                            kdaScore      * 0.40;
+
+            if (finalScore < 0) finalScore = 0;
+            if (finalScore > 1) finalScore = 1;
+
+            long reward = Math.round(baseReward * finalScore);
+
+            p.sendMessage(org.bukkit.ChatColor.GOLD + "Récompense : " + reward + "$");
         }
 
 
@@ -633,8 +701,29 @@ public final class WarRuntime {
 
         private void endRoundDefendersNoAttack() {
             this.inDetectionWindow = false;
-            endWar(false);
+
+            // Fin totale de la guerre, pas un round
+            war.setStatus(WarStatus.ENDED);
+            WarManager.getWars().put(war.getId(), war);
+
+            // Nettoie visuels
+            com.kingdomspvp.kingdoms.utils.ClaimVisualization.stopWarOutlines(war);
+
+            // Message
+            String defName = ChatUtil.kingdomName(war.getDefenderKingdom());
+            String msg = ChatUtil.prefixWithWar(
+                    org.bukkit.ChatColor.RED + "Aucune attaque n’a été lancée. " +
+                            org.bukkit.ChatColor.GOLD + "Victoire des défenseurs (" + defName +
+                            org.bukkit.ChatColor.GOLD + ")."
+            );
+            WarManager.sendToRegisteredPlayers(
+                    war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(msg)
+            );
+
+            // Stop runtime + UI
+            stop(false);
         }
+
 
         // WarRuntime.java — AJOUTS (dans la classe interne WarSession)
         void attachUIIfEligible(org.bukkit.entity.Player p) {
@@ -692,8 +781,8 @@ public final class WarRuntime {
             if (attackersWin) {
                 com.kingdomspvp.kingdoms.model.Claim attacked = WarManager.getAttackedClaim(war);
                 if (attacked != null) {
-                    com.kingdomspvp.kingdoms.services.ClaimManager.transferClaimToKingdom(
-                            attacked, war.getAttackerKingdom().getName()
+                    ClaimManager.transferClaimToKingdom(
+                            attacked, true, war.getAttackerKingdom().getName()
                     );
                 }
             }
@@ -706,7 +795,6 @@ public final class WarRuntime {
             // Coupe le ticker & nettoie UI
             stop(false);
         }
-
 
         private static double clamp01(double v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
     }
