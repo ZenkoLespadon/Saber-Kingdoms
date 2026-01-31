@@ -47,7 +47,7 @@ public class AutoClaimListener implements Listener {
         if (!ClaimManager.hasClaimForKingdom(kName)) return;
         if (!ClaimManager.isAdjacentToKingdomClaim(cTo, kName)) return;
 
-        ClaimManager.transferClaimToKingdom(cTo, kName);
+        ClaimManager.transferClaimToKingdom(cTo, false, kName);
         p.sendMessage(ChatColor.GRAY + "Autoclaim: " + ChatColor.GREEN + "claim " + ChatColor.WHITE +
                 "[" + cTo.getGridX() + "," + cTo.getGridZ() + "] " + ChatColor.GRAY + "pour " + k.getColor() + kName);
     }

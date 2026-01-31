@@ -191,11 +191,11 @@ public class ClaimManager {
         return result;
     }
 
-    public static void transferClaimToKingdom(Claim claim, String kingdomName, String factionTag) {
+    public static void transferClaimToKingdom(Claim claim, boolean ignoreLimits, String kingdomName, String factionTag) {
         if (CLAIMS_LOCKED || claim == null || kingdomName == null) return;
 
         int count = getClaimsByKingdomName(kingdomName).size();
-        if (count >= MAX_CLAIMS_PER_KINGDOM) {
+        if (count >= MAX_CLAIMS_PER_KINGDOM && !ignoreLimits) {
 
             Bukkit.getOnlinePlayers().forEach(p -> {
                 if (!AutoClaimManager.isEnabled(p.getUniqueId())) return;
@@ -226,8 +226,8 @@ public class ClaimManager {
     }
 
 
-    public static void transferClaimToKingdom(Claim claim, String kingdomName) {
-        transferClaimToKingdom(claim, kingdomName, "Paysans_" + kingdomName);
+    public static void transferClaimToKingdom(Claim claim, boolean ignoreLimits, String kingdomName) {
+        transferClaimToKingdom(claim, ignoreLimits, kingdomName, "Paysans_" + kingdomName);
     }
 
     /* ===================== */

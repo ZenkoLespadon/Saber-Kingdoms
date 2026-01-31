@@ -47,13 +47,14 @@ public class ClaimCommand extends KingdomCommand {
         String factionName = fPlayer.getFaction().getTag();
         Kingdom kingdom = KingdomsManager.getKingdomByFactionName(factionName);
         if (kingdom == null) {
-            context.msg(ChatColor.RED + "Votre faction n'appartient à aucun royaume. Veuillez contacter un administrateur.");
+            context.msg(ChatColor.RED + "Votre faction n'appartient à aucun royaume. Contactez un administrateur.");
             return;
         }
 
-        // --- Vérification limite de claims ---
+        // --- Vérification limite ---
         int maxClaims = ClaimManager.MAX_CLAIMS_PER_KINGDOM;
         int currentClaims = ClaimManager.getClaimsByKingdomName(kingdom.getName()).size();
+
         if (currentClaims >= maxClaims) {
             context.msg(ChatColor.RED + "Votre royaume a atteint la limite maximale de "
                     + maxClaims + " claims. Vous ne pouvez plus en créer.");
@@ -63,12 +64,12 @@ public class ClaimCommand extends KingdomCommand {
         Location loc = context.player.getLocation();
         Claim claim = ClaimManager.getClaimByCoordinates(loc.getBlockX(), loc.getBlockZ());
         if (claim == null) {
-            context.msg(ChatColor.RED + "Impossible de trouver le claim correspondant ici. Merci de signaler ce problème à un staff.");
+            context.msg(ChatColor.RED + "Erreur interne : impossible de trouver ce claim.");
             return;
         }
 
         if (claim.getKingdomName() != null && !claim.getKingdomName().equalsIgnoreCase("None")) {
-            context.msg(ChatColor.RED + "Ce chunk est déjà claim par un royaume.");
+            context.msg(ChatColor.RED + "Ce chunk est déjà claim.");
             return;
         }
 
@@ -80,20 +81,25 @@ public class ClaimCommand extends KingdomCommand {
             }
         } else {
             if (!ClaimManager.isAdjacentToKingdomClaim(claim, kingdom.getName())) {
-                context.msg(ChatColor.RED + "Vous ne pouvez claim que des chunks adjacents à ceux de votre royaume.");
+                context.msg(ChatColor.RED + "Vous devez claim uniquement des chunks adjacents.");
                 return;
             }
         }
 
-        claim.setKingdomName(kingdom.getName());
-        claim.setFactionName(factionName);
-        ClaimManager.addClaim(claim);
+        // --- UTILISE MAINTENANT LE TRANSFERT OFFICIEL ---
+        ClaimManager.transferClaimToKingdom(
+                claim,
+                false,
+                kingdom.getName(),
+                factionName
+        );
 
-        context.msg(ChatColor.GREEN + "Vous avez claim ce chunk pour le royaume "
+        context.msg(ChatColor.GREEN + "Chunk claim pour le royaume "
                 + kingdom.getColor() + kingdom.getName()
                 + ChatColor.GREEN + " et la faction "
                 + ChatColor.WHITE + factionName + ChatColor.GREEN + ".");
     }
+
 
     @Override
     public String getUsageTranslation() {
