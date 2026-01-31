@@ -8,6 +8,9 @@ import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.utils.ChatUtil;
 import com.kingdomspvp.kingdoms.utils.PowerCalculator;
 import com.kingdomspvp.kingdoms.utils.data.SettingsProvider;
+import com.massivecraft.factions.FPlayer;
+import com.massivecraft.factions.FPlayers;
+import com.massivecraft.factions.integration.Econ;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -417,6 +420,7 @@ public final class WarRuntime {
             long reward = Math.round(baseReward * finalScore);
 
             p.sendMessage(org.bukkit.ChatColor.GOLD + "Récompense : " + reward + "$");
+            Econ.modifyBalance(p.getName(), reward);
         }
 
 
