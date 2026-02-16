@@ -10,6 +10,9 @@ public class War {
     private final LocalDateTime startTime;
     private WarStatus status;
 
+    private int roundsPlayed = 0;
+
+
     private boolean combatStarted = false;
 
     private final Set<UUID> attackerPlayers = new HashSet<>();
@@ -65,6 +68,10 @@ public class War {
     public void setStatus(WarStatus status) {
         this.status = status;
     }
+
+    public int getRoundsPlayed() { return roundsPlayed; }
+
+    public void incrementRoundsPlayed() { roundsPlayed++; }
 
     /** Vérifie si l'attaquant a assez de membres pour déclarer (>=1 pour l'instant, >= 5 plus tard) **/
     public boolean canDeclare() {

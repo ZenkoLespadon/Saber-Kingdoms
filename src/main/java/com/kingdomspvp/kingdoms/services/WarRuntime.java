@@ -8,11 +8,10 @@ import com.kingdomspvp.kingdoms.model.WarStatus;
 import com.kingdomspvp.kingdoms.utils.ChatUtil;
 import com.kingdomspvp.kingdoms.utils.PowerCalculator;
 import com.kingdomspvp.kingdoms.utils.data.SettingsProvider;
-import com.massivecraft.factions.FPlayer;
-import com.massivecraft.factions.FPlayers;
 import com.massivecraft.factions.integration.Econ;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.boss.BarColor;
@@ -44,6 +43,13 @@ public final class WarRuntime {
 
     private static int TP_OFFSET_FROM_BORDER;
     private static int TP_Y_OFFSET;
+
+    // TODO : A mettre dans le fichier de config
+    private static final long BASE_ATK_REWARD_PER_ROUND = 100;
+    private static final long BASE_DEF_REWARD_PER_ROUND = 150;
+    private static final long NO_ROUND_ATK_REWARD = 10;
+    private static final long NO_ROUND_DEF_REWARD = 100;
+
 
 
     public static void onDetectionWindowStarted(War war, Duration window) { getOrCreate(war).startDetectionWindow(window); }
@@ -290,6 +296,9 @@ public final class WarRuntime {
             String atkName = ChatUtil.kingdomName(war.getAttackerKingdom());
             String defName = ChatUtil.kingdomName(war.getDefenderKingdom());
 
+            war.incrementRoundsPlayed();
+
+
             String roundMsg = attackersWon
                     ? ChatUtil.prefixWithWar(
                     org.bukkit.ChatColor.GOLD + "Fin du round " + roundIndex + " — "
@@ -352,6 +361,32 @@ public final class WarRuntime {
             }
 
             // === RECOMPENSES ===
+
+            int r = war.getRoundsPlayed();
+
+            long atkBonus = r * BASE_ATK_REWARD_PER_ROUND;
+            long defBonus = r * BASE_DEF_REWARD_PER_ROUND;
+
+            for (UUID id : war.getAttackerPlayers()) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null && p.isOnline()) {
+                    if (atkBonus > 0) {
+                        Econ.modifyBalance(p.getName(), atkBonus);
+                        p.sendMessage(ChatColor.GOLD + "Bonus rounds : " + atkBonus + "$");
+                    }
+                }
+            }
+
+            for (UUID id : war.getDefenderPlayers()) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null && p.isOnline()) {
+                    if (defBonus > 0) {
+                        Econ.modifyBalance(p.getName(), defBonus);
+                        p.sendMessage(ChatColor.GOLD + "Bonus rounds : " + defBonus + "$");
+                    }
+                }
+            }
+
 
             int playerCount = war.getAttackerPlayers().size() + war.getDefenderPlayers().size();
             if (playerCount < 1) playerCount = 1;
@@ -724,7 +759,22 @@ public final class WarRuntime {
                     war, net.md_5.bungee.api.chat.TextComponent.fromLegacyText(msg)
             );
 
-            // Stop runtime + UI
+            for (UUID id : war.getAttackerPlayers()) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null && p.isOnline()) {
+                    Econ.modifyBalance(p.getName(), NO_ROUND_ATK_REWARD);
+                    p.sendMessage(ChatColor.GOLD + "Récompense : " + NO_ROUND_ATK_REWARD + "$");
+                }
+            }
+
+            for (UUID id : war.getDefenderPlayers()) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null && p.isOnline()) {
+                    Econ.modifyBalance(p.getName(), NO_ROUND_DEF_REWARD);
+                    p.sendMessage(ChatColor.GOLD + "Récompense : " + NO_ROUND_DEF_REWARD + "$");
+                }
+            }
+
             stop(false);
         }
 
