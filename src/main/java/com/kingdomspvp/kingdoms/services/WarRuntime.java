@@ -45,10 +45,10 @@ public final class WarRuntime {
     private static int TP_Y_OFFSET;
 
     // TODO : A mettre dans le fichier de config
-    private static final long BASE_ATK_REWARD_PER_ROUND = 100;
-    private static final long BASE_DEF_REWARD_PER_ROUND = 150;
-    private static final long NO_ROUND_ATK_REWARD = 10;
-    private static final long NO_ROUND_DEF_REWARD = 100;
+    private static final long BASE_ATK_REWARD_PER_ROUND = 1000;
+    private static final long BASE_DEF_REWARD_PER_ROUND = 1500;
+    private static final long NO_ROUND_ATK_REWARD = 100;
+    private static final long NO_ROUND_DEF_REWARD = 1000;
 
 
 
