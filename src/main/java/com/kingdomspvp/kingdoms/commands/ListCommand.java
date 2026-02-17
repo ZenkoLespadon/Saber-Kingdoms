@@ -55,7 +55,7 @@ public class ListCommand extends KingdomCommand {
                 .sorted(Map.Entry.<Kingdom, Integer>comparingByValue().reversed())
                 .collect(Collectors.toList());
 
-        context.msg(ChatColor.GREEN + "Classement des royaumes par nombre de membres :");
+        context.msg(ChatColor.GOLD + "Classement des royaumes par nombre de membres :");
 
         for (Map.Entry<Kingdom, Integer> entry : sorted) {
             Kingdom k = entry.getKey();
