@@ -51,7 +51,7 @@ public class MembersCommand extends KingdomCommand {
         int size = members.size();
 
         context.msg(ChatColor.GOLD + "Royaume " + kc + kingdom.getName()
-                + ChatColor.GOLD + " (" + ChatColor.GREEN + size + ChatColor.GOLD + " membres)");
+                + ChatColor.WHITE + " (" + ChatColor.GREEN + size + ChatColor.GOLD + " membres" + ChatColor.WHITE + ")");
 
         for (FPlayer fp : members) {
             context.msg(kc + "- " + fp.getName());
