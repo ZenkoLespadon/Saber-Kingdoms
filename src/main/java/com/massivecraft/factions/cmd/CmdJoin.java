@@ -12,9 +12,6 @@ import com.massivecraft.factions.zcore.util.TL;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 
-import java.util.Comparator;
-import java.util.Optional;
-
 public class CmdJoin extends FCommand {
 
     public CmdJoin() {
@@ -67,10 +64,19 @@ public class CmdJoin extends FCommand {
                 return;
             }
 
+            // Vérification : la faction cible appartient-elle au royaume du joueur ?
+            boolean factionInKingdom = kingdom.getFactions().stream()
+                    .anyMatch(f -> f.getId().equals(faction.getId()));
+
+            if (!factionInKingdom) {
+                context.msg(ChatColor.RED + "Vous ne pouvez rejoindre que les factions de votre royaume.");
+                return;
+            }
+
+            // Vérification : le joueur doit être dans la faction par défaut avant d'en choisir une autre
             boolean inDefault = KingdomsManager.playerInDefaultFaction(fplayer.getPlayer(), kingdom);
 
             if (!inDefault) {
-                // Le joueur est dans une faction ≠ faction par défaut → refus
                 context.msg(ChatColor.RED + "Vous devez être dans la faction par défaut de votre royaume pour rejoindre une faction.");
                 return;
             }
