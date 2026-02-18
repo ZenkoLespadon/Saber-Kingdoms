@@ -202,8 +202,6 @@ public final class WarRuntime {
         private int tickCounter = 0;
 
 
-
-
         private int roundIndex = 1;               // 1..MAX_ROUNDS
         private boolean combatActive = false;     // timer combat (round) actif ?
 
@@ -215,6 +213,14 @@ public final class WarRuntime {
 
         private int A = 0, D = 0; // inscrits
         private int defendersKills = 0; // pour le bonus passif anti-turtle (réservé évolutions)
+
+        // --- Glow périodique ---
+        private static final int GLOW_INTERVAL_SECONDS = 15;
+        private static final int GLOW_DURATION_SECONDS = 5;
+
+        private int glowCooldown = GLOW_INTERVAL_SECONDS;
+        private final Set<UUID> glowingNow = Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
+
 
         private final Map<UUID, BossAndBoard> ui = new ConcurrentHashMap<>();
 
@@ -273,6 +279,9 @@ public final class WarRuntime {
                             else inDetectionWindow = false;
                         }
 
+                        // --- Glow périodique pendant la guerre (quand la guerre est en cours) ---
+                        handleGlowPulse();
+
                         if (combatActive) {
                             if (pointsAttackers >= targetPoints) { endWar(true); return; }
                             if (secondsLeft <= 0) { endWar(false); return; }
@@ -283,6 +292,7 @@ public final class WarRuntime {
                     0L, 20L
             );
         }
+
 
         private void endWar(boolean attackersInstantWin) {
             final boolean attackersWon = (pointsAttackers >= targetPoints);
@@ -640,6 +650,58 @@ public final class WarRuntime {
             }
         }
 
+        private void handleGlowPulse() {
+            // On ne glow que si la guerre est réellement en cours (status INPROGRESS)
+            if (war.getStatus() != WarStatus.INPROGRESS) return;
+
+            // Cooldown entre deux pulses
+            if (glowCooldown > 0) {
+                glowCooldown--;
+                return;
+            }
+
+            // Lancement d'un pulse
+            glowCooldown = GLOW_INTERVAL_SECONDS;
+            startGlowPulse();
+        }
+
+
+        private void startGlowPulse() {
+            // Active le glow sur tous les joueurs inscrits (ATK + DEF)
+            for (UUID id : war.getAttackerPlayers()) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null && p.isOnline()) {
+                    p.setGlowing(true);
+                    glowingNow.add(id);
+                }
+            }
+            for (UUID id : war.getDefenderPlayers()) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null && p.isOnline()) {
+                    p.setGlowing(true);
+                    glowingNow.add(id);
+                }
+            }
+
+            // Planifie l'arrêt du glow au bout de 5 secondes
+            Bukkit.getScheduler().scheduleSyncDelayedTask(
+                    plugin,
+                    this::stopGlowPulse,
+                    GLOW_DURATION_SECONDS * 20L
+            );
+        }
+
+        private void stopGlowPulse() {
+            for (UUID id : glowingNow) {
+                Player p = Bukkit.getPlayer(id);
+                if (p != null && p.isOnline()) {
+                    p.setGlowing(false);
+                }
+            }
+            glowingNow.clear();
+        }
+
+
 
         // TODO : A retirer après la beta
         private void logContributions10s(Claim c) {
@@ -672,8 +734,6 @@ public final class WarRuntime {
                             + " | Présence=" + String.format("%.0f%%", presence)
             );
         }
-
-
 
 
         private int attackersInClaimNow() {
@@ -909,11 +969,43 @@ public final class WarRuntime {
             Line objective = new Line(sb, obj, teamPrefix, 2, "Objectif", "100%");
             addStaticLine(sb, obj, teamPrefix, 1, org.bukkit.ChatColor.GRAY + "kingdoms.example");
 
+            // 🔽 🔽 🔽 AJOUT ICI : TEAMS POUR LE GLOW COLORÉ 🔽 🔽 🔽
+
+            org.bukkit.scoreboard.Team atkTeam = sb.getTeam("war_atk");
+            if (atkTeam == null) {
+                atkTeam = sb.registerNewTeam("war_atk");
+                atkTeam.setColor(war.getAttackerKingdom().getColor()); // org.bukkit.ChatColor
+            }
+
+            org.bukkit.scoreboard.Team defTeam = sb.getTeam("war_def");
+            if (defTeam == null) {
+                defTeam = sb.registerNewTeam("war_def");
+                defTeam.setColor(war.getDefenderKingdom().getColor());
+            }
+
+            // Ajoute tous les participants visibles sur CE scoreboard,
+            // pour que leur glow prenne la bonne couleur pour ce joueur p.
+            for (java.util.UUID id : war.getAttackerPlayers()) {
+                Player wp = Bukkit.getPlayer(id);
+                if (wp != null) {
+                    atkTeam.addEntry(wp.getName()); // entry = nom du joueur
+                }
+            }
+            for (java.util.UUID id : war.getDefenderPlayers()) {
+                Player wp = Bukkit.getPlayer(id);
+                if (wp != null) {
+                    defTeam.addEntry(wp.getName());
+                }
+            }
+
+            // 🔼 🔼 🔼 FIN AJOUT 🔼 🔼 🔼
+
             p.setScoreboard(sb);
 
-            // ⬇️ constructeur aligné avec l’appel
-            return new BossAndBoard(p, war, bar, old, sb, obj, objName, teamPrefix, timer, allies, enemies, kda, points, objective);
+            return new BossAndBoard(p, war, bar, old, sb, obj, objName, teamPrefix,
+                    timer, allies, enemies, kda, points, objective);
         }
+
 
         // ⚠️ pas de param "sb" inutile ici ; ordre = (oldSb, mySb, obj, …)
         private BossAndBoard(Player p, War war, org.bukkit.boss.BossBar bar,
