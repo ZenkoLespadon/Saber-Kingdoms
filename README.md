@@ -1,26 +1,37 @@
 # Saber-Kingdoms
 
-**Saber-Kingdoms** is a PvP-oriented territorial warfare plugin for Minecraft built as a **fork of the popular Saber-Factions plugin**.
+**Saber-Kingdoms** is a Minecraft PvP territorial warfare plugin built as a fork of **Saber-Factions**.
 
-It extends the traditional faction gameplay by introducing **Kingdoms**, a higher-level political structure that allows multiple factions to unite under a single entity and compete for territory through organized wars.
+This project keeps the original Factions plugin as its foundation and adds my own **Kingdoms** system on top of it. I did not rewrite the Factions core; my work focuses on the additional gameplay layer that connects factions, territory control, and organized wars.
 
-The goal of the project is to provide **structured, competitive territorial warfare** while preserving the persistent nature of the Minecraft world.
+Kingdoms allow multiple factions to unite under a single entity, control territory, and fight structured wars while preserving the persistent nature of the Minecraft world.
 
 ---
 
 ## Overview
 
-Kingdoms adds a new layer above factions where groups of factions form **Kingdoms** that control territory and engage in wars against other kingdoms.
+The custom Kingdoms layer introduces:
 
-The plugin introduces:
-
-- a kingdom-based political system
-- territorial claims organized on a grid
-- scheduled wars between kingdoms
+- a political system above factions, where several factions can belong to the same kingdom
+- grid-based territorial claims linked to kingdom ownership
+- scheduled wars between kingdoms, with registration and battle phases
 - territory capture mechanics during battles
-- temporary world modifications to avoid permanent destruction
+- temporary world modifications during war, restored afterward to avoid permanent damage
+- commands, listeners, managers, JSON persistence, and configurable gameplay settings
 
-Wars are organized events where players from both kingdoms can participate and fight to capture enemy territory.
+The system is integrated into the existing Bukkit/Spigot event model. Commands and listeners react to player actions, while service classes manage kingdom state, claims, wars, and runtime battle logic.
 
-- Minecraft server (Spigot or Paper recommended)
-- The **Factions plugin**, which Kingdoms extends
+## Requirements
+
+- Java 17+
+- Spigot or Paper Minecraft server
+- Vault
+- ProtocolLib
+- LuckPerms
+
+Optional integrations:
+
+- WorldGuard
+- PlaceholderAPI
+- PlayerVaults
+- dynmap
